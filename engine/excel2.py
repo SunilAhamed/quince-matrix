@@ -14,6 +14,9 @@ B = _os.path.dirname(_os.path.abspath(__file__)) + '/'
 st = json.load(open(B + 'state.json'))
 OUT = sys.argv[1] if len(sys.argv) > 1 else B + 'Quince_Matrix_Shop.xlsx'
 LASTS = '[<1]"<1";0'
+B2B_POS = list((st.get('b2b') or {}).get('pos', []))
+B2B_SHIP = (st.get('b2b') or {}).get('ship', {})
+B2B_RANGE = "'B2B Dispatch'!$L$6:$L$25"
 PORDER = ["Waffle Throw", "Waffle Bed Blanket", "Duvet Cover", "Duvet Cover Set", "Sham Set"]
 F = 'Arial'
 PINE, PINE2, INK, MUTED, LINE, BG = '1E5B4F', '2C7A6A', '16201B', '6B7871', 'D9DFDA', 'F2F4F1'
@@ -41,13 +44,14 @@ wb = Workbook()
 db = wb.active; db.title = 'Dashboard'
 sh = wb.create_sheet('Shop')
 po = wb.create_sheet('PO Ledger')
+bb = wb.create_sheet('B2B Dispatch')
 ins = wb.create_sheet('Add Inspection')
 od = wb.create_sheet('Add Orders')
 cat = wb.create_sheet('Catalog')
 dy = wb.create_sheet('Daily')
 cc = wb.create_sheet('Calc')
 
-NAV = [('Dashboard', 'Dashboard'), ('Shop', 'Shop'), ('PO Ledger', 'PO Ledger'), ('Add Inspection', '+ Add inspection'), ('Add Orders', '+ Add orders')]
+NAV = [('Dashboard', 'Dashboard'), ('Shop', 'Shop'), ('PO Ledger', 'PO Ledger'), ('B2B Dispatch', 'B2B dispatch'), ('Add Inspection', '+ Add inspection'), ('Add Orders', '+ Add orders')]
 
 def navbar(ws, current, row=1, start_col=2, span=2):
     ws.row_dimensions[row].height = 24
@@ -96,11 +100,13 @@ for c in st['catalog']:
     for p in c['pos']:
         cat_rows.append((p['po'], c['sku'], c['product'], c['colour'], c['size'], c['cls'], p['qty'], p['rev']))
 cat_rows.sort(key=lambda r: (PORDER.index(r[2]), r[1], r[0]))
-header(cat, 1, ['PO', 'SKU', 'Product', 'Colour', 'Size', 'Size class', 'PO qty', 'Revised date', 'Match key'], 1, ['in'] * 8 + ['calc'])
+header(cat, 1, ['PO', 'SKU', 'Product', 'Colour', 'Size', 'Size class', 'PO qty', 'Revised date', 'Match key', 'Type'], 1, ['in'] * 8 + ['calc'] * 2)
 for i, r in enumerate(cat_rows, 2):
     for j, v in enumerate(r, 1): cat.cell(row=i, column=j, value=v).font = font()
     cat.cell(row=i, column=9, value=f'=A{i}&"|"&UPPER(D{i})&"|"&F{i}').font = font()
 CAT_END = 400  # room for new PO lines
+for i in range(2, CAT_END + 1):
+    cat.cell(row=i, column=10, value=f'=IF(A{i}="","",IF(COUNTIF({B2B_RANGE},A{i})>0,"B2B","Shop"))')
 for i in range(len(cat_rows) + 2, CAT_END + 1):
     cat.cell(row=i, column=9, value=f'=IF(A{i}="","",A{i}&"|"&UPPER(D{i})&"|"&F{i})')
 cat.freeze_panes = 'A2'
@@ -117,8 +123,8 @@ ins.merge_cells('B3:N3')
 ins['B3'] = 'Type one row per form line in the first empty row, oldest inspection first. Fill the yellow columns only; grey columns work by themselves. If Matched SKU says CHECK, type the SKU in Override SKU.'
 ins['B3'].font = font(9.5, False, MUTED)
 cols = ['Inspection date', 'Form file', 'PO', 'Colour', 'Size (as on form)', 'Form SKU', 'Qty', 'Override SKU',
-        'Size class', 'Matched SKU', 'Note', 'Earlier lots', 'Sold from lot (FIFO)', 'Left in lot', 'Open-lot no.', 'Selling-now key']
-header(ins, I_H, cols, 2, ['in'] * 8 + ['calc'] * 8)
+        'Size class', 'Matched SKU', 'Note', 'Earlier lots', 'Sold from lot (FIFO)', 'Left in lot', 'Open-lot no.', 'Selling-now key', 'Type']
+header(ins, I_H, cols, 2, ['in'] * 8 + ['calc'] * 9)
 # columns: B date C file D PO E colour F size G formSKU H qty I override J class K matched L note M earlier N sold O left P open Q key
 cat_by = {c['sku']: c for c in st['catalog']}
 for k, l in enumerate(st['insp']):
@@ -140,8 +146,9 @@ for r in range(I0, I1 + 1):
                     f'MATCH(D{r}&"|"&UPPER(TRIM(E{r}))&"|"&J{r},{CR("I")},0)),"CHECK")))')
     ins[f'L{r}'] = (f'=IF(D{r}="","",IF(K{r}="CHECK","No PO + colour + size match: type the SKU in Override SKU",'
                     f'IF(AND(G{r}<>"",UPPER(TRIM(G{r}))<>K{r}),"Form SKU "&G{r}&" is not on PO "&D{r}&"; counted as "&K{r},"")))')
-    ins[f'M{r}'] = f'=IF(K{r}="","",SUMIFS($H${I_H}:H{r-1},$K${I_H}:K{r-1},K{r}))'
-    ins[f'N{r}'] = f'=IF(OR(K{r}="",K{r}="CHECK"),"",MIN(H{r},MAX(0,SUMIFS({OQ},{OS},K{r})-M{r})))'
+    ins[f'R{r}'] = f'=IF(D{r}="","",IF(COUNTIF({B2B_RANGE},D{r})>0,"B2B","Shop"))'
+    ins[f'M{r}'] = f'=IF(OR(K{r}="",R{r}="B2B"),"",SUMIFS($H${I_H}:H{r-1},$K${I_H}:K{r-1},K{r},$R${I_H}:R{r-1},"Shop"))'
+    ins[f'N{r}'] = f'=IF(OR(K{r}="",K{r}="CHECK",R{r}="B2B"),"",MIN(H{r},MAX(0,SUMIFS({OQ},{OS},K{r})-M{r})))'
     ins[f'O{r}'] = f'=IF(N{r}="","",H{r}-N{r})'
     ins[f'P{r}'] = f'=IF(O{r}="","",IF(O{r}>0,COUNTIFS($K${I0}:K{r},K{r},$O${I0}:O{r},">0"),""))'
     ins[f'Q{r}'] = f'=IF(P{r}=1,K{r},"")'
@@ -158,6 +165,7 @@ ins.conditional_formatting.add(f'O{I0}:O{I1}', FormulaRule(formula=[f'AND(ISNUMB
 IK = f"'Add Inspection'!$K${I0}:$K${I1}"
 IH = f"'Add Inspection'!$H${I0}:$H${I1}"
 ID = f"'Add Inspection'!$D${I0}:$D${I1}"
+IR = f"'Add Inspection'!$R${I0}:$R${I1}"
 
 # ======================= Add Orders =======================
 navbar(od, 'Add Orders', start_col=2, span=1)
@@ -213,7 +221,8 @@ cols = ['SKU', 'Product', 'Colour', 'Size', 'PO qty', 'Inspected', 'Sold', 'In s
 header(sh, S_H, cols, 2)
 skus = sorted(st['catalog'], key=lambda c: (PORDER.index(c['product']), c['sku']))
 S1 = S0 + len(skus) - 1
-prow = sorted(cat_rows, key=lambda r: (r[0], PORDER.index(r[2]), r[1]))
+prow = sorted([r for r in cat_rows if r[0] not in B2B_POS], key=lambda r: (r[0], PORDER.index(r[2]), r[1]))
+b2b_rows = sorted([r for r in cat_rows if r[0] in B2B_POS], key=lambda r: (B2B_POS.index(r[0]), r[1]))
 po_first_row = {}
 for k, rr in enumerate(prow):
     po_first_row.setdefault(rr[1], P0 + k)
@@ -221,8 +230,8 @@ for k, c in enumerate(skus):
     r = S0 + k
     sh[f'B{r}'] = f'=HYPERLINK("#\'PO Ledger\'!B{po_first_row[c["sku"]]}","{c["sku"]}")'
     sh[f'C{r}'] = c['product']; sh[f'D{r}'] = c['colour']; sh[f'E{r}'] = c['size']
-    sh[f'F{r}'] = f'=SUMIFS({CR("G")},{CR("B")},"{c["sku"]}")'
-    sh[f'G{r}'] = f'=SUMIFS({IH},{IK},"{c["sku"]}")'
+    sh[f'F{r}'] = f'=SUMIFS({CR("G")},{CR("B")},"{c["sku"]}",{CR("J")},"Shop")'
+    sh[f'G{r}'] = f'=SUMIFS({IH},{IK},"{c["sku"]}",{IR},"Shop")'
     sh[f'H{r}'] = f'=SUMIFS({OQ},{OS},"{c["sku"]}")'
     sh[f'I{r}'] = f'=G{r}-H{r}'
     sh[f'J{r}'] = f'=IF(G{r}=0,"Awaiting inspection",IF(I{r}<0,"Below 0 - check",IF(I{r}=0,"Sold out",IF(I{r}<=RedLimit,"Red",IF(I{r}<=YellowLimit,"Yellow","Green")))))'
@@ -287,6 +296,54 @@ po.conditional_formatting.add(f'B{P0}:L{P1}', FormulaRule(formula=[f'$H{P0}=0'],
 po.freeze_panes = f'D{P0}'; po.auto_filter.ref = f'B{P_H}:M{P1}'
 widths(po, {'A': 2, 'B': 9, 'C': 11, 'D': 19, 'E': 11, 'F': 13, 'G': 8, 'H': 10, 'I': 10, 'J': 9, 'K': 11, 'L': 12, 'M': 19})
 
+# ======================= B2B Dispatch =======================
+navbar(bb, 'B2B Dispatch')
+title_band(bb, 2, 'B2B dispatch', 'B2B POs ship in one go: once inspected, the whole inspected qty is dispatched together on the day the buyer confirms. Type the dispatch date in the yellow cell on the PO row. B2B qty never counts as portal shop stock.', 2, 12)
+bb['G5'] = '=SUMIFS(I8:I400,B8:B400,"PO *")'; bb['H5'] = '=COUNTIFS(K8:K400,"Inspected - waiting for buyer")&" PO(s) inspected, waiting for buyer"'
+bb['G5'].font = font(14, True, PINE); bb['H5'].font = font(9, False, MUTED); bb['B5'] = 'Pcs to dispatch'; bb['B5'].font = font(9, True, MUTED)
+# B2B PO list (feeds the Type columns): B6:B25
+bb['L5'] = 'B2B PO list'; bb['L5'].font = font(9, True, MUTED)
+for i in range(20):
+    c = bb.cell(row=6 + i, column=12, value=B2B_POS[i] if i < len(B2B_POS) else None)
+    c.fill = fill(YEL_BG); c.font = font(10, True, YEL_TX); c.border = box; c.alignment = CENTER
+bb['L27'] = 'Add a new B2B PO number in an empty yellow cell, and its lines to the hidden Catalog sheet.'; bb['L27'].font = font(8.5, False, MUTED)
+header(bb, 7, ['PO / SKU', 'Item', 'Ship date', 'PO qty', 'Inspected', 'Dispatched on', 'Dispatched qty', 'To dispatch', 'Status'], 2)
+r = 8
+for po_no in B2B_POS:
+    lines = [x for x in b2b_rows if x[0] == po_no]
+    hr = r; first, last = hr + 1, hr + len(lines)
+    bb[f'B{hr}'] = f'PO {po_no}'; bb[f'D{hr}'] = B2B_SHIP.get(str(po_no), lines[0][7] if lines else '')
+    bb[f'E{hr}'] = f'=SUM(E{first}:E{last})'; bb[f'F{hr}'] = f'=SUM(F{first}:F{last})'
+    disp = [d for d in (st.get('b2b') or {}).get('dispatch', []) if d['po'] == po_no]
+    bb[f'G{hr}'] = datetime.date.fromisoformat(disp[-1]['d']) if disp else None
+    bb[f'G{hr}'].fill = fill('FFFF00'); bb[f'G{hr}'].font = font(10, True, '0000FF'); bb[f'G{hr}'].number_format = 'dd-mmm-yyyy'
+    bb[f'H{hr}'] = f'=SUM(H{first}:H{last})'; bb[f'I{hr}'] = f'=SUM(I{first}:I{last})'
+    bb[f'J{hr}'] = f'=IF(F{hr}=0,"Awaiting inspection",IF(G{hr}<>"","Dispatched","Inspected - waiting for buyer"))'
+    for col in 'BCDEFGHIJ':
+        bb[f'{col}{hr}'].border = Border(top=Side(style='medium', color=PINE), bottom=thin)
+        if col != 'G': bb[f'{col}{hr}'].font = font(10, True); bb[f'{col}{hr}'].fill = fill(BG)
+    for k, x in enumerate(lines):
+        rr = hr + 1 + k
+        bb[f'B{rr}'] = f'=HYPERLINK("#Shop!B{sku_row[x[1]]}","{x[1]}")'; bb[f'B{rr}'].font = font(10, True, PINE, u='single')
+        bb[f'C{rr}'] = f'{x[3]} · {x[2]} · {x[4]}'
+        bb[f'E{rr}'] = x[6]
+        bb[f'F{rr}'] = f'=SUMIFS({IH},{ID},{po_no},{IK},"{x[1]}")'
+        bb[f'H{rr}'] = f'=IF($G${hr}<>"",F{rr},0)'
+        bb[f'I{rr}'] = f'=F{rr}-H{rr}'
+        for col in 'BCDEFGHIJ': bb[f'{col}{rr}'].border = bottom
+        for col in 'CEFHI': bb[f'{col}{rr}'].font = font()
+    r = last + 2
+bb['K8'] = None
+# status column K (one per PO header) for the counter in K3
+for row in range(8, r):
+    if str(bb[f'B{row}'].value or '').startswith('PO '): bb[f'K{row}'] = f'=J{row}'; bb[f'K{row}'].font = font(1, False, 'FFFFFF')
+status_cf(bb, f'J8:J{r}')
+for val, bg, tx in [('"Inspected - waiting for buyer"', YEL_BG, YEL_TX), ('"Dispatched"', GRN_BG, GRN_TX)]:
+    bb.conditional_formatting.add(f'J8:J{r}', CellIsRule(operator='equal', formula=[val], fill=fill(bg), font=Font(name=F, bold=True, color=tx)))
+for row in range(8, r):
+    for col in 'EFHI': bb[f'{col}{row}'].number_format = '#,##0'
+widths(bb, {'A': 2, 'B': 12, 'C': 30, 'D': 11, 'E': 9, 'F': 10, 'G': 14, 'H': 12, 'I': 11, 'J': 26, 'K': 2, 'L': 14})
+bb.freeze_panes = 'C8'
 # ======================= Calc (hidden) =======================
 header(cc, 1, ['SKU list', 'Live sort key', 'k', 'k-th key', 'Shop row'], 1, ['calc'] * 5)
 for k, c in enumerate(skus):
@@ -361,7 +418,7 @@ tiles = [
     ('F', 'G', 'IN STOCK', f'=Shop!I{T}', f'="pcs  ·  "&TEXT(IF(Shop!G{T}=0,0,Shop!H{T}/Shop!G{T}),"0%")&" sold through"', 'Shop'),
     ('H', 'I', 'LAST 7 ORDER DAYS', '=Calc!S2', '=IF(Calc!T2=0,"pcs",TEXT(Calc!S2/Calc!T2-1,"+0%;-0%")&" vs previous 7")', 'Shop'),
     ('K', 'L', 'LIVE SKUs', f'=COUNTIF(Shop!$P${S0}:$P${S1},"Live shop")', '="with stock on the portal"', 'Shop'),
-    ('M', 'N', 'EMPTY BUCKET', f'=COUNTIF(Shop!$P${S0}:$P${S1},"Empty bucket")', f'=COUNTIF(Shop!$J${S0}:$J${S1},"Sold out")&" sold out · "&COUNTIF(Shop!$J${S0}:$J${S1},"Awaiting inspection")&" awaiting"', 'Shop'),
+    ('M', 'N', 'B2B TO DISPATCH', "='B2B Dispatch'!$G$5", "='B2B Dispatch'!$H$5", 'B2B Dispatch'),
     ('O', 'Q', 'SELLING FAST', f'=COUNTIFS(Shop!$N${S0}:$N${S1},"<=5")', '="live SKUs with ≤ 5 order days left"', 'Shop'),
 ]
 for c1, c2, lab, val, subf, link in tiles:
@@ -505,9 +562,9 @@ db[f'B{r0+9}'].font = font(8.5, False, MUTED)
 
 # finish
 for ws in (cat, dy, cc): ws.sheet_state = 'hidden'
-tabc = {'Dashboard': INK, 'Shop': PINE, 'PO Ledger': PINE, 'Add Inspection': YEL, 'Add Orders': YEL}
+tabc = {'Dashboard': INK, 'Shop': PINE, 'PO Ledger': PINE, 'B2B Dispatch': PINE, 'Add Inspection': YEL, 'Add Orders': YEL}
 for ws in wb.worksheets: ws.sheet_properties.tabColor = tabc.get(ws.title, 'B5C1BB')
-for ws in (sh, po, ins, od):
+for ws in (sh, po, bb, ins, od):
     ws.sheet_view.showGridLines = False
     ws.sheet_view.zoomScale = 90
 db.freeze_panes = 'A4'

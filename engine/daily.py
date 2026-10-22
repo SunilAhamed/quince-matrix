@@ -51,7 +51,9 @@ if new:
 
 # ---------- balances for the summary ----------
 insp = collections.Counter(); sold = collections.Counter()
-for l in st['insp']: insp[l['s']] += l['q']
+B2B = set((st.get('b2b') or {}).get('pos', []))
+for l in st['insp']:
+    if l['po'] not in B2B: insp[l['s']] += l['q']
 for s in st['sales']: sold[s[2]] += s[3]
 red, yel = st['settings']['red'], st['settings']['yellow']
 def status(b): return 'empty' if b <= 0 else 'red' if b <= red else 'yellow' if b <= yel else 'green'
@@ -131,4 +133,5 @@ print(json.dumps({'ok': True, 'day': day, 'tab': TAB, 'export_lines': len(rows),
                   'new_orders': len({l[1] for _, l in new}), 'already_counted': skipped, 'unknown_skus': unknown,
                   'canada': sum(1 for _, l in new if l[5] == 'CA'), 'moved': moved, 'oversold': oversold,
                   'inspected': ins_total, 'sold': sold_total, 'in_stock': sum(max(insp[k] - sold[k], 0) for k in insp),
+                  'b2b_pending': sum(l['q'] for l in st['insp'] if l['po'] in B2B) - sum(d['q'] for d in (st.get('b2b') or {}).get('dispatch', [])),
                   'excel_recalc': recalc, 'odr_file': odr_out}))

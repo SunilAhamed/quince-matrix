@@ -14,6 +14,8 @@ function dshort(d){ if(!d) return "–"; var p=d.split("-"); return (+p[2])+" "+
 function dlong(d){ return d ? dshort(d)+" "+d.slice(0,4) : "–"; }
 function todayISO(){ var t=new Date(); t.setMinutes(t.getMinutes()-t.getTimezoneOffset()); return t.toISOString().slice(0,10); }
 function sw(c){ return '<span class="sw" style="background:'+(SWATCH[c]||"#999")+'" aria-hidden="true"></span>'; }
+function b2bPos(){ return (STATE.b2b && STATE.b2b.pos) || []; }
+function isB2B(po){ return b2bPos().indexOf(+po)>-1; }
 function status(bal){ var s=STATE.settings; if(bal<=0) return "empty"; if(bal<=s.red) return "red"; if(bal<=s.yellow) return "yellow"; return "green"; }
 function statusLabel(st){ return {red:"Red · Low", yellow:"Yellow · Medium", green:"Green · Healthy", empty:"Empty"}[st]; }
 
@@ -30,7 +32,7 @@ function titleCase(s){ return String(s||"").trim().toLowerCase().replace(/\b\w/g
 function compute(st){
   var cat = {}; st.catalog.forEach(function(c){ cat[c.sku] = {sku:c.sku, product:c.product, colour:c.colour, size:c.size, cls:c.cls, pos:c.pos, insp:0, sold:0, over:0, lots:[], lastSale:null, firstSale:null, recent:0}; });
   var lots = st.insp.map(function(l,i){ return {d:l.d,f:l.f,po:l.po,s:l.s,q:l.q,n:l.n,i:i,left:l.q,sold:0}; })
-    .sort(function(a,b){ return a.d<b.d?-1:a.d>b.d?1:a.i-b.i; });
+    .filter(function(l){ return !isB2B(l.po); }).sort(function(a,b){ return a.d<b.d?-1:a.d>b.d?1:a.i-b.i; });
   lots.forEach(function(l){ var c=cat[l.s]; if(!c) return; c.insp+=l.q; c.lots.push(l); });
   var sales = st.sales.map(function(s,i){ return {d:s[0],o:s[1],s:s[2],q:s[3],a:s[4],c:s[5],i:i}; })
     .sort(function(a,b){ return a.d<b.d?-1:a.d>b.d?1:a.i-b.i; });
@@ -46,8 +48,19 @@ function compute(st){
     for(var k=0;k<c.lots.length && rem>0;k++){ var l=c.lots[k]; var take=Math.min(l.left,rem); l.left-=take; l.sold+=take; rem-=take; }
     c.over+=rem;
   });
-  var skus = Object.keys(cat).map(function(k){ var c=cat[k]; c.bal=c.insp-c.sold; c.st=status(c.bal); c.poQty=c.pos.reduce(function(a,p){return a+p.qty;},0); c.cover = c.recent>0 ? c.bal/(c.recent/recentDays.length) : null; return c; });
-  return {cat:cat, skus:skus, lots:lots, sales:sales, days:days, dayList:dayList, lastDay:lastDay, recentDays:recentDays};
+  var skus = Object.keys(cat).map(function(k){ var c=cat[k]; c.bal=c.insp-c.sold; c.st=status(c.bal); c.poQty=c.pos.reduce(function(a,p){return a+(isB2B(p.po)?0:p.qty);},0); c.cover = c.recent>0 ? c.bal/(c.recent/recentDays.length) : null; return c; });
+  // B2B: whole PO shipped in one go when the buyer says; never part of the portal stock
+  var b2b = b2bPos().map(function(po){
+    var lines = {}, ship = (st.b2b.ship||{})[po] || "";
+    st.catalog.forEach(function(c){ c.pos.forEach(function(p){ if(p.po===po){ lines[c.sku]={sku:c.sku,colour:c.colour,product:c.product,size:c.size,qty:p.qty,insp:0}; if(!ship) ship=p.rev; } }); });
+    st.insp.forEach(function(l){ if(l.po===po){ if(!lines[l.s]){ var c=cat[l.s]||{}; lines[l.s]={sku:l.s,colour:c.colour,product:c.product,size:c.size,qty:0,insp:0}; } lines[l.s].insp+=l.q; } });
+    var disp = (st.b2b.dispatch||[]).filter(function(d){ return d.po===po; });
+    var L = Object.keys(lines).sort().map(function(k){ return lines[k]; });
+    var qty=L.reduce(function(a,x){return a+x.qty;},0), insp=L.reduce(function(a,x){return a+x.insp;},0), sent=disp.reduce(function(a,d){return a+d.q;},0);
+    var stt = sent>0 && sent>=insp && insp>0 ? "dispatched" : insp===0 ? "awaiting" : "ready";
+    return {po:po, ship:ship, lines:L, qty:qty, insp:insp, sent:sent, pending:Math.max(insp-sent,0), disp:disp, st:stt};
+  });
+  return {cat:cat, skus:skus, lots:lots, sales:sales, days:days, dayList:dayList, lastDay:lastDay, recentDays:recentDays, b2b:b2b};
 }
 
 /* ---------- rendering ---------- */
@@ -56,7 +69,7 @@ function render(){
   M = compute(STATE);
   renderHeader(); renderKpis(); renderRules(); renderTabs();
   var v = $("#view");
-  v.innerHTML = ui.tab==="shop" ? viewShop() : ui.tab==="po" ? viewPO() : ui.tab==="analytics" ? viewAnalytics() : viewActivity();
+  v.innerHTML = ui.tab==="shop" ? viewShop() : ui.tab==="po" ? viewPO() : ui.tab==="analytics" ? viewAnalytics() : ui.tab==="b2b" ? viewB2B() : viewActivity();
   bindView();
 }
 function renderHeader(){
@@ -80,7 +93,7 @@ function ico(n){
 function renderKpis(){
   var insp=0, sold=0, bal=0, live=0, empty=0;
   M.skus.forEach(function(c){ insp+=c.insp; sold+=c.sold; if(c.bal>0){ bal+=c.bal; live++; } else empty++; });
-  var nInsp = {}; STATE.insp.forEach(function(l){ nInsp[l.d]=1; });
+  var nInsp = {}; STATE.insp.forEach(function(l){ if(!isB2B(l.po)) nInsp[l.d]=1; });
   var lastPcs = M.days[M.lastDay]||0;
   var lastOrders = {}; M.sales.forEach(function(x){ if(x.d===M.lastDay) lastOrders[x.o]=1; });
   var orders = {}; M.sales.forEach(function(x){ orders[x.o]=1; });
@@ -89,8 +102,8 @@ function renderKpis(){
     ["Sold", fmt(sold), "pcs · "+fmt(Object.keys(orders).length)+" orders · "+M.dayList.length+" days"],
     ["In stock", fmt(bal), "pcs · "+Math.round(sold/Math.max(insp,1)*100)+"% sold through"],
     ["Last order day", fmt(lastPcs), "pcs on "+dlong(M.lastDay)+" · "+Object.keys(lastOrders).length+" orders"],
-    ["Live SKUs", fmt(live), "with stock on the portal"],
-    ["Empty bucket", fmt(empty), "sold out or awaiting inspection"]
+    ["Live SKUs", fmt(live), fmt(empty)+" more in the empty bucket"],
+    ["B2B to dispatch", fmt(M.b2b.reduce(function(a,b){return a+b.pending;},0)), M.b2b.filter(function(b){return b.st==="ready";}).length+" PO(s) inspected, waiting for buyer"]
   ];
   $("#kpis").innerHTML = k.map(function(x){ return '<div class="kpi"><div class="l">'+x[0]+'</div><div class="v">'+x[1]+'</div><div class="s">'+esc(x[2])+'</div></div>'; }).join("");
 }
@@ -151,7 +164,7 @@ function viewPO(){
   M.lots.forEach(function(l){ var k=l.po+"|"+l.s; if(!rows[k]) rows[k]={po:l.po,c:M.cat[l.s],qty:0,rev:"",insp:0,sold:0,left:0}; rows[k].insp+=l.q; rows[k].sold+=l.sold; rows[k].left+=l.left; });
   var byPo = {};
   Object.keys(rows).forEach(function(k){ var r=rows[k]; (byPo[r.po]=byPo[r.po]||[]).push(r); });
-  var pos = Object.keys(byPo).filter(function(p){ return ui.poAll || byPo[p].some(function(r){ return r.insp>0; }); })
+  var pos = Object.keys(byPo).filter(function(p){ return !isB2B(p); }).filter(function(p){ return ui.poAll || byPo[p].some(function(r){ return r.insp>0; }); })
     .sort(function(a,b){ var ia=byPo[a].some(function(r){return r.insp>0;}), ib=byPo[b].some(function(r){return r.insp>0;}); return ia!==ib ? (ia?-1:1) : a-b; });
   var h = '<div class="filters"><div class="seg" data-f="poAll"><button type="button" aria-pressed="'+(!ui.poAll)+'" data-v="0">Inspected POs</button><button type="button" aria-pressed="'+ui.poAll+'" data-v="1">All POs</button></div><span class="c" style="color:var(--muted);font-size:12.5px">Sales are taken from the oldest inspected PO first (FIFO).</span></div>';
   h += '<div class="tbl-wrap"><table><thead><tr><th>PO / SKU</th><th>Item</th><th class="r">PO qty</th><th class="r">Inspected</th><th class="r">Sold</th><th class="r">In stock</th><th class="r">Not yet inspected</th><th>Revised date</th><th>Status</th></tr></thead><tbody>';
@@ -203,11 +216,35 @@ function viewAnalytics(){
     '<div class="panel wide"><h3>Sell-through by SKU</h3><p class="sub">Stock lasts = stock ÷ average daily sales over the last 7 order days</p>'+tbl+'</div>'+
   '</div>';
 }
+function viewB2B(){
+  var h = '<p class="note">B2B purchase orders ship in one go: when a B2B PO is inspected, the whole inspected qty is dispatched together on the day the buyer confirms. B2B qty is kept out of the portal shop stock.</p>';
+  if(!M.b2b.length) return h + '<div class="note">No B2B purchase orders yet.</div>';
+  var order={ready:0,awaiting:1,dispatched:2};
+  M.b2b.slice().sort(function(a,b){ return order[a.st]-order[b.st] || a.po-b.po; }).forEach(function(b){
+    var tag = b.st==="ready" ? '<span class="tag yellow">Inspected · waiting for buyer</span>' : b.st==="dispatched" ? '<span class="tag green">Dispatched '+dlong(b.disp[b.disp.length-1].d)+'</span>' : '<span class="tag empty">Awaiting inspection</span>';
+    h += '<section class="sec"><div class="sec-h"><h2>PO '+b.po+'</h2>'+tag+'<span class="c">Ship date '+esc(b.ship||"–")+' · PO qty '+fmt(b.qty)+' · inspected '+fmt(b.insp)+' · dispatched '+fmt(b.sent)+'</span></div>';
+    h += '<div class="tbl-wrap"><table><thead><tr><th>SKU</th><th>Item</th><th class="r">PO qty</th><th class="r">Inspected</th><th class="r">To dispatch</th></tr></thead><tbody>'+
+      b.lines.map(function(x){ var pend = b.st==="dispatched" ? 0 : x.insp; return '<tr><td><span class="chip">'+x.sku+'</span></td><td><span style="display:inline-flex;gap:8px;align-items:center">'+sw(x.colour)+esc((x.colour||"")+" · "+(x.product||"")+" · "+(x.size||""))+'</span></td><td class="r">'+fmt(x.qty)+'</td><td class="r">'+(x.insp?fmt(x.insp):'–')+'</td><td class="r"><b>'+(pend?fmt(pend):'–')+'</b></td></tr>'; }).join("")+
+      '</tbody></table></div>';
+    if(CAN_EDIT && b.st==="ready") h += '<div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn primary" type="button" data-b2b="'+b.po+'">Mark PO '+b.po+' dispatched today ('+fmt(b.pending)+' pcs)</button><span id="b2b-msg-'+b.po+'"></span></div>';
+    h += '</section>';
+  });
+  return h;
+}
+function markB2B(po){
+  var b = M.b2b.filter(function(x){ return x.po===po; })[0]; if(!b || !b.pending) return;
+  var btn = document.querySelector('[data-b2b="'+po+'"]');
+  if(btn && !btn.dataset.armed){ btn.dataset.armed="1"; btn.textContent="Confirm: PO "+po+" dispatched today, "+fmt(b.pending)+" pcs"; return; }
+  var next = clone(STATE); next.b2b.dispatch = next.b2b.dispatch || [];
+  next.b2b.dispatch.push({po:po, d:todayISO(), q:b.pending});
+  next.log.push({at:todayISO(), kind:"b2b", f:"PO "+po, pcs:b.pending, n:"B2B PO "+po+" dispatched in one shipment"});
+  save(next, $("#b2b-msg-"+po));
+}
 function viewActivity(){
   var items = STATE.log.slice().reverse();
   return '<div class="log">'+items.map(function(l){
-    var kind = l.kind==="inspection" ? "Inspection" : l.kind==="orders" ? "Daily orders" : l.kind==="rules" ? "Colour rules" : "History";
-    return '<div class="log-i"><div class="k">'+kind+'</div><div><b>'+esc(l.f)+'</b><p>'+esc(l.n||"")+'</p></div><div class="num" style="color:var(--muted);font-size:12.5px">'+esc(l.at)+(l.pcs!=null?' · '+(l.kind==="orders"?"−":"+")+fmt(l.pcs)+' pcs':'')+'</div></div>';
+    var kind = l.kind==="inspection" ? "Inspection" : l.kind==="orders" ? "Daily orders" : l.kind==="rules" ? "Colour rules" : l.kind==="b2b" ? "B2B dispatch" : "History";
+    return '<div class="log-i"><div class="k">'+kind+'</div><div><b>'+esc(l.f)+'</b><p>'+esc(l.n||"")+'</p></div><div class="num" style="color:var(--muted);font-size:12.5px">'+esc(l.at)+(l.pcs!=null?' · '+(l.kind==="orders"||l.kind==="b2b"?"−":"+")+fmt(l.pcs)+' pcs':'')+'</div></div>';
   }).join("")+'</div>';
 }
 function bindView(){
@@ -369,7 +406,9 @@ function showPreview(){
   var p=pending, el=$("#prev"), h="";
   if(p.kind==="insp"){
     var pcs=p.lines.reduce(function(a,l){return a+l.q;},0), by={};
-    p.lines.forEach(function(l){ by[l.s]=(by[l.s]||0)+l.q; });
+    var b2bL=p.lines.filter(function(l){ return isB2B(l.po); });
+    p.lines.forEach(function(l){ if(!isB2B(l.po)) by[l.s]=(by[l.s]||0)+l.q; });
+    if(b2bL.length) h += '<div class="note">'+b2bL.length+' line(s), '+fmt(b2bL.reduce(function(a,l){return a+l.q;},0))+' pcs, are B2B (PO '+Object.keys(b2bL.reduce(function(a,l){a[l.po]=1;return a;},{})).join(", ")+'). They go to the B2B dispatch tab, not the shop stock.</div>';
     h += '<div class="sumrow"><span class="chip">'+p.lines.length+' lines matched</span><span class="chip">+'+fmt(pcs)+' pcs</span><span class="chip">'+Object.keys(by).length+' SKUs</span>'+(p.bad.length?'<span class="chip" style="color:var(--red)">'+p.bad.length+' not matched</span>':'')+'</div>';
     if(p.dupFile) h += '<div class="note warn">A file named '+esc(p.file)+' was already added. Add it again only if this is a new inspection.</div>';
     p.lines.filter(function(l){return l.n;}).forEach(function(l){ h+='<div class="note warn">'+esc(l.n)+'</div>'; });
@@ -452,9 +491,10 @@ function downloadSummary(){
 document.querySelector(".tabs").addEventListener("click", function(e){ var b=e.target.closest(".tab"); if(!b) return; ui.tab=b.dataset.tab; try{ history.replaceState(null,"","#"+ui.tab); }catch(err){} render(); });
 document.addEventListener("click", function(e){
   var o=e.target.closest("[data-open]"); if(o){ openDrawer(o.dataset.open); return; }
+  var bb=e.target.closest("[data-b2b]"); if(bb){ markB2B(+bb.dataset.b2b); return; }
   if(e.target.closest("#dl")) downloadSummary();
 });
-var hash=(location.hash||"").slice(1); if(["shop","po","analytics","activity"].indexOf(hash)>-1) ui.tab=hash;
+var hash=(location.hash||"").slice(1); if(["shop","po","analytics","b2b","activity"].indexOf(hash)>-1) ui.tab=hash;
 render();
 if(window.claude && window.claude.use){
   Promise.all([window.claude.use("artifact").catch(function(){return null;}), window.claude.use("user").catch(function(){return null;}), window.claude.use("downloads").catch(function(){return null;})]).then(function(r){

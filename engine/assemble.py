@@ -12,6 +12,7 @@ T = {
          '<button class="tab" role="tab" data-tab="shop" type="button">Shop</button>'
          '<button class="tab" role="tab" data-tab="po" type="button">PO ledger</button>'
          '<button class="tab" role="tab" data-tab="analytics" type="button">Analytics</button>'
+         '<button class="tab" role="tab" data-tab="b2b" type="button">B2B dispatch</button>'
          '<button class="tab" role="tab" data-tab="activity" type="button">Activity</button></div>'
          '<div class="rules" id="rules"></div></div>'
          '<div id="view"></div>'
