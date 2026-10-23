@@ -1,0 +1,43 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isOwner() {
+      return signedIn() && request.auth.token.email == 'sunilahamed2@gmail.com'
+        && request.auth.token.email_verified == true;
+    }
+    // India day number (UTC+05:30), so deletes lock at 12:00 midnight IST
+    function istDay(t) { return math.floor((t.toMillis() + 19800000) / 86400000); }
+    function validEntry(d) {
+      return d.keys().hasOnly(['po','stage','sku','shade','size','product','qty','uid','name','ts','day'])
+        && d.po is int && d.stage in ['cutting','packing']
+        && d.sku is string && d.sku.size() <= 20
+        && d.shade is string && d.shade.size() <= 30
+        && d.size is string && d.size.size() <= 30
+        && d.product is string && d.product.size() <= 40
+        && d.qty is int && d.qty > 0 && d.qty <= 100000
+        && d.name is string && d.name.size() > 0 && d.name.size() <= 60
+        && d.day is string && d.day.size() == 10;
+    }
+
+    match /production/{id} {
+      allow read: if true;
+      allow create: if signedIn() && validEntry(request.resource.data)
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.ts == request.time;
+      allow update: if isOwner() && validEntry(request.resource.data)
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.ts == resource.data.ts;
+      allow delete: if isOwner()
+        || (signedIn() && resource.data.uid == request.auth.uid
+            && istDay(resource.data.ts) == istDay(request.time));
+    }
+
+    match /people/{uid} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['name','email','updated'])
+        && request.resource.data.name is string && request.resource.data.name.size() <= 60;
+    }
+  }
+}

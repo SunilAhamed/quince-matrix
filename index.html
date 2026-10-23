@@ -1,3 +1,5 @@
+<!doctype html>
+<meta charset="utf-8">
 <title>Quince Matrix</title><meta name="claude:viewport-fit-sides" content="cover"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap"><style id="qm-css">/* Layout: sticky header, KPI strip, tabbed workspace; shop = grid of hang-tag cards */
 :root{
   --bg:#F2F4F1; --surface:#FFFFFF; --sunk:#E8ECE7; --ink:#16201B; --ink-2:#47544D; --muted:#6B7871; --line:#D9DFDA;
@@ -252,6 +254,8 @@ function render(){
   M = compute(STATE);
   renderHeader(); renderKpis(); renderRules(); renderTabs();
   var v = $("#view");
+  var X = window.QM_EXT;
+  if(ui.tab==="production" && X && X.view){ v.innerHTML = X.view(); if(X.bind) X.bind(v); return; }
   v.innerHTML = ui.tab==="shop" ? viewShop() : ui.tab==="po" ? viewPO() : ui.tab==="analytics" ? viewAnalytics() : ui.tab==="b2b" ? viewB2B() : viewActivity();
   bindView();
 }
@@ -266,6 +270,7 @@ function renderHeader(){
   } else {
     h += '<span class="viewonly">View only</span>';
   }
+  if(window.QM_EXT && window.QM_EXT.actions) h += window.QM_EXT.actions();
   if(DOWNLOADS) h += '<button class="btn" id="dl" type="button">'+ico("down")+'Download summary</button>';
   a.innerHTML = h;
 }
@@ -679,6 +684,7 @@ document.addEventListener("click", function(e){
 });
 var hash=(location.hash||"").slice(1); if(["shop","po","analytics","b2b","activity"].indexOf(hash)>-1) ui.tab=hash;
 render();
+window.QM_APP = { state: STATE, render: render, setTab: function(t){ ui.tab=t; try{ history.replaceState(null,"","#"+t); }catch(err){} render(); }, tab: function(){ return ui.tab; }, inspected: function(){ var m={}; STATE.insp.forEach(function(l){ var k=l.po+"|"+l.s; m[k]=(m[k]||0)+l.q; }); return m; } };
 if(window.claude && window.claude.use){
   Promise.all([window.claude.use("artifact").catch(function(){return null;}), window.claude.use("user").catch(function(){return null;}), window.claude.use("downloads").catch(function(){return null;})]).then(function(r){
     ARTIFACT=r[0]; DOWNLOADS=r[2];
@@ -689,3 +695,4 @@ if(window.claude && window.claude.use){
 }
 })();
 </script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script><script src="qm-fire.js"></script><script src="prod-tab.js"></script>

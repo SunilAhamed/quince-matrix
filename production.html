@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Production Update · Quince Matrix</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Production floor: dark stage, shade-tinted ambient light, neon edges on interactive tiles */
+:root{
+  --bg:#0E1311; --panel:rgba(23,31,28,.78); --panel-solid:#17201C; --line:rgba(255,255,255,.09); --ink:#E8EEEA; --ink-2:#B7C3BD; --muted:#88968F;
+  --pine:#3FB596; --shade:#3FB596; --glow:rgba(63,181,150,.55);
+  --red:#F07167; --amber:#F2C94C; --green:#5CC98A;
+  --f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif; --f-body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif; --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:-20%;z-index:-2;pointer-events:none;
+  background:radial-gradient(40% 35% at 15% 10%,color-mix(in srgb,var(--shade) 38%,transparent),transparent 70%),
+             radial-gradient(45% 40% at 90% 85%,color-mix(in srgb,var(--shade) 26%,transparent),transparent 70%),
+             radial-gradient(30% 30% at 75% 15%,rgba(63,181,150,.10),transparent 70%);
+  transition:background 1.2s ease;animation:drift 22s ease-in-out infinite alternate}
+body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.07;
+  background-image:repeating-linear-gradient(45deg,#fff 0 1px,transparent 1px 7px),repeating-linear-gradient(-45deg,#fff 0 1px,transparent 1px 7px)}
+@keyframes drift{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(-3%,2%,0) scale(1.06)}}
+.wrap{max-width:980px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
+a{color:var(--pine)}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--shade);outline-offset:3px}
+
+/* top bar */
+.top{display:flex;align-items:center;gap:14px;padding-block:calc(16px + env(safe-area-inset-top,0px)) 12px;flex-wrap:wrap}
+.mark{width:42px;height:42px;border-radius:12px;background:var(--ink);color:var(--bg);display:grid;place-items:center;font-family:Georgia,serif;font-size:24px;flex:none;box-shadow:0 0 0 1px var(--line),0 0 28px var(--glow);transition:box-shadow .8s}
+.ttl{flex:1 1 220px;min-width:0}
+.ttl h1{font-family:var(--f-display);font-size:24px;margin:0;letter-spacing:-.01em}
+.ttl a{font-size:12.5px;color:var(--muted);text-decoration:none}
+.ttl a:hover{color:var(--ink)}
+.me{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 6px 5px 12px;backdrop-filter:blur(10px)}
+.me img{width:28px;height:28px;border-radius:50%}
+.me b{font-size:13px}
+.me small{display:block;color:var(--muted);font-size:11px}
+.ghost{background:transparent;border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:12.5px;color:var(--ink-2)}
+.ghost:hover{border-color:var(--shade);color:var(--ink);box-shadow:0 0 14px var(--glow)}
+
+/* crumbs */
+.crumbs{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 14px;min-height:30px}
+.crumb{display:inline-flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:12.5px;color:var(--ink-2);animation:pop .35s cubic-bezier(.2,.9,.3,1.3)}
+.crumb .sw{width:12px;height:12px;border-radius:50%;border:1px solid rgba(255,255,255,.25)}
+.crumb button{background:none;border:0;color:var(--muted);padding:0 0 0 2px}
+@keyframes pop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+
+/* stage card */
+.stage{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:22px;backdrop-filter:blur(14px);box-shadow:0 30px 80px rgba(0,0,0,.35);overflow:hidden;min-height:340px}
+.stage::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;background:linear-gradient(130deg,var(--shade),transparent 40%,transparent 60%,var(--shade));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;opacity:.55;pointer-events:none;transition:background .8s}
+.step{animation:stepIn .45s cubic-bezier(.2,.8,.2,1) both}
+.step.back{animation:stepBack .45s cubic-bezier(.2,.8,.2,1) both}
+@keyframes stepIn{from{opacity:0;transform:translateX(28px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes stepBack{from{opacity:0;transform:translateX(-28px) scale(.985)}to{opacity:1;transform:none}}
+.step-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.step-h h2{font-family:var(--f-display);font-size:21px;margin:0}
+.step-h .n{font-family:var(--f-mono);font-size:12px;color:var(--muted);letter-spacing:.08em}
+.backbtn{background:none;border:0;color:var(--ink-2);font-size:13px;padding:4px 0;display:inline-flex;gap:6px;align-items:center}
+.backbtn:hover{color:var(--ink)}
+
+/* PO list */
+.search{width:100%;background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:12px;padding:11px 14px;color:var(--ink);font:inherit;margin-bottom:12px}
+.search:focus{border-color:var(--shade);outline:none;box-shadow:0 0 18px var(--glow)}
+.polist{display:flex;flex-direction:column;gap:8px;max-height:56vh;overflow:auto;padding:2px 4px 2px 2px}
+.porow{display:grid;grid-template-columns:24px 1fr auto 24px;gap:12px;align-items:center;width:100%;text-align:left;background:rgba(255,255,255,.035);border:1px solid var(--line);border-radius:14px;padding:12px 14px;transition:transform .18s,border-color .18s,box-shadow .18s,background .18s;animation:stepIn .4s both}
+.porow:hover,.porow:focus-visible{border-color:var(--shade);box-shadow:0 0 0 1px var(--shade),0 0 26px var(--glow);transform:translateX(3px);background:rgba(255,255,255,.06)}
+.porow .chk{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--muted);transition:all .2s}
+.porow:hover .chk{border-color:var(--shade);background:color-mix(in srgb,var(--shade) 35%,transparent)}
+.porow b{font-family:var(--f-mono);font-size:15px}
+.porow .meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.chip{font-size:11.5px;border:1px solid var(--line);border-radius:999px;padding:1px 8px;color:var(--ink-2);white-space:nowrap}
+.chip.b2b{border-color:rgba(242,201,76,.5);color:var(--amber)}
+.dots{display:flex;gap:3px}
+.dots i{width:10px;height:10px;border-radius:50%;border:1px solid rgba(255,255,255,.2)}
+.arrow{font-size:20px;color:var(--muted);transition:transform .2s,color .2s}
+.porow:hover .arrow{transform:translateX(4px);color:var(--shade)}
+
+/* big tiles */
+.tiles{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}
+.tiles.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.tile{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:10px;min-height:120px;text-align:left;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:18px;padding:18px;transition:transform .2s cubic-bezier(.2,.9,.3,1.3),box-shadow .25s,border-color .25s,background .25s;overflow:hidden;animation:stepIn .45s both}
+.tile:nth-child(2){animation-delay:.05s}.tile:nth-child(3){animation-delay:.1s}.tile:nth-child(4){animation-delay:.15s}.tile:nth-child(5){animation-delay:.2s}.tile:nth-child(6){animation-delay:.25s}.tile:nth-child(7){animation-delay:.3s}
+.tile::after{content:"";position:absolute;inset:auto -30% -60% -30%;height:120%;background:radial-gradient(closest-side,var(--tglow,var(--glow)),transparent);opacity:0;transition:opacity .3s;pointer-events:none}
+.tile:hover,.tile:focus-visible{transform:translateY(-4px) scale(1.015);border-color:var(--tc,var(--shade));box-shadow:0 0 0 1px var(--tc,var(--shade)),0 0 34px var(--tglow,var(--glow)),inset 0 0 22px rgba(255,255,255,.03)}
+.tile:hover::after{opacity:.55}
+.tile:active{transform:scale(.97)}
+.tile .big{font-family:var(--f-display);font-size:24px;font-weight:700;line-height:1.1}
+.tile .sub{font-size:12.5px;color:var(--muted)}
+.tile svg{width:34px;height:34px}
+.tile .swl{width:44px;height:44px;border-radius:50%;border:2px solid rgba(255,255,255,.25);box-shadow:0 0 22px var(--tglow)}
+.bar{height:6px;width:100%;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:auto}
+.bar i{display:block;height:100%;background:var(--tc,var(--shade));border-radius:99px;transition:width .6s}
+
+/* qty */
+.qtywrap{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:720px){.qtywrap{grid-template-columns:minmax(0,1fr)}.tiles.two{grid-template-columns:minmax(0,1fr)}}
+.display{background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:18px;padding:16px 18px;box-shadow:inset 0 0 30px rgba(0,0,0,.4)}
+.display label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.display input{width:100%;background:none;border:0;color:var(--ink);font-family:var(--f-display);font-size:58px;font-weight:800;padding:0;outline:none;font-variant-numeric:tabular-nums;text-shadow:0 0 24px var(--glow)}
+.facts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.facts div{background:rgba(255,255,255,.04);border-radius:12px;padding:8px 10px;font-size:11.5px;color:var(--muted)}
+.facts b{display:block;font-size:17px;color:var(--ink);font-variant-numeric:tabular-nums}
+.warn{margin-top:12px;border-radius:12px;padding:10px 12px;font-size:13px;background:rgba(242,201,76,.12);color:var(--amber);border:1px solid rgba(242,201,76,.3)}
+.err{margin-top:12px;border-radius:12px;padding:10px 12px;font-size:13px;background:rgba(240,113,103,.12);color:var(--red);border:1px solid rgba(240,113,103,.3)}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.key{height:62px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid var(--line);font-family:var(--f-display);font-size:24px;font-weight:700;transition:transform .12s,box-shadow .2s,border-color .2s}
+.key:hover{border-color:var(--shade);box-shadow:0 0 18px var(--glow)}
+.key:active{transform:scale(.93)}
+.enter{grid-column:1/-1;height:64px;border-radius:16px;border:0;background:var(--shade);color:#0E1311;font-family:var(--f-display);font-size:22px;font-weight:800;letter-spacing:.02em;box-shadow:0 0 0 1px rgba(255,255,255,.2),0 0 36px var(--glow);transition:transform .15s,box-shadow .25s,filter .2s}
+.enter:hover{filter:brightness(1.08);box-shadow:0 0 0 1px rgba(255,255,255,.35),0 0 56px var(--glow)}
+.enter:active{transform:scale(.97)}
+.enter:disabled{opacity:.5;cursor:not-allowed}
+
+/* success burst */
+.burst{position:fixed;left:50%;top:50%;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;pointer-events:none;z-index:60;border:3px solid var(--shade);animation:burst 1s ease-out forwards}
+@keyframes burst{from{transform:scale(1);opacity:.9}to{transform:scale(60);opacity:0}}
+.done{text-align:center;padding:30px 10px}
+.done .tick{width:86px;height:86px;border-radius:50%;margin:0 auto 14px;display:grid;place-items:center;background:var(--shade);color:#0E1311;box-shadow:0 0 60px var(--glow);animation:pop .5s cubic-bezier(.2,.9,.3,1.4)}
+.done .tick svg{width:44px;height:44px}
+.done h2{font-family:var(--f-display);font-size:26px;margin:0 0 6px}
+.done p{color:var(--ink-2);margin:0 0 18px}
+.row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:rgba(255,255,255,.05);border-radius:12px;padding:11px 16px;font-weight:600;transition:box-shadow .2s,border-color .2s,transform .15s}
+.btn:hover{border-color:var(--shade);box-shadow:0 0 22px var(--glow)}
+.btn.primary{background:var(--shade);color:#0E1311;border-color:transparent}
+
+/* gate */
+.gate{text-align:center;padding:36px 10px}
+.gate h2{font-family:var(--f-display);font-size:28px;margin:0 0 8px}
+.gate p{color:var(--ink-2);max-width:46ch;margin:0 auto 22px}
+.gbtn{display:inline-flex;align-items:center;gap:12px;background:#fff;color:#1f1f1f;border:0;border-radius:999px;padding:12px 22px 12px 14px;font-weight:600;font-size:15px;box-shadow:0 0 0 1px rgba(255,255,255,.3),0 0 40px rgba(63,181,150,.35);transition:transform .15s,box-shadow .25s}
+.gbtn:hover{transform:translateY(-2px);box-shadow:0 0 0 1px #fff,0 0 60px rgba(63,181,150,.6)}
+.gbtn svg{width:22px;height:22px}
+.namebox{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:6px}
+.namebox input{background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:12px;padding:11px 14px;color:var(--ink);font:inherit;min-width:0;width:260px}
+
+/* entries */
+.entries{margin-top:22px;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px;backdrop-filter:blur(12px)}
+.entries-h{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.entries-h h3{font-family:var(--f-display);font-size:17px;margin:0}
+.seg{display:flex;gap:4px;background:rgba(0,0,0,.25);border-radius:999px;padding:3px}
+.seg button{border:0;background:none;border-radius:999px;padding:5px 12px;font-size:12.5px;color:var(--ink-2)}
+.seg button[aria-pressed="true"]{background:var(--shade);color:#0E1311}
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+td.r{text-align:right;font-variant-numeric:tabular-nums}
+tr.fresh td{animation:fresh 2.4s ease-out}
+@keyframes fresh{from{background:color-mix(in srgb,var(--shade) 35%,transparent)}to{background:transparent}}
+.stg{font-size:11px;font-weight:600;border-radius:999px;padding:2px 8px}
+.stg.cutting{background:rgba(92,201,138,.14);color:var(--green)}
+.stg.packing{background:rgba(167,182,193,.16);color:#C9D6DE}
+.mini{border:1px solid var(--line);background:none;border-radius:8px;padding:3px 8px;font-size:12px;color:var(--ink-2)}
+.mini:hover{border-color:var(--red);color:var(--red)}
+.mini.edit:hover{border-color:var(--shade);color:var(--ink)}
+.empty{color:var(--muted);font-size:13px;padding:10px 2px}
+.foot{color:var(--muted);font-size:12px;margin-top:20px;text-align:center}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="mark" aria-hidden="true">Q</div>
+    <div class="ttl"><h1>Production Update</h1><a href="./">← Back to Quince Matrix</a></div>
+    <div id="me"></div>
+  </header>
+  <div class="crumbs" id="crumbs" aria-label="Your selection"></div>
+  <main class="stage" id="stage" aria-live="polite"><div class="empty">Loading…</div></main>
+  <section class="entries" id="entries" hidden></section>
+  <p class="foot">Cutting and packing are production progress only; portal stock still changes only when an inspection is added. Your own entries can be deleted until 12:00 midnight (India time).</p>
+</div>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="qm-fire.js"></script>
+<script>
+(function(){
+"use strict";
+var F = window.QMFire, CAT = null, USER = null, ROWS = [], TOT = {}, unsub = null, lastAdded = null;
+var sel = { po:null, stage:null, shade:null, sku:null, size:null };
+var view = { step:"po", back:false, q:"", qty:"", entries:"mine", warnOk:false, err:"" };
+var $ = function(s){ return document.querySelector(s); };
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+function fmt(n){ return Number(n||0).toLocaleString("en-IN"); }
+function hexA(hex,a){ var h=hex.replace("#",""); var r=parseInt(h.substr(0,2),16),g=parseInt(h.substr(2,2),16),b=parseInt(h.substr(4,2),16); return "rgba("+r+","+g+","+b+","+a+")"; }
+function setShade(c){ var hex=c||"#3FB596"; var vivid = hex; if(/^#(E4DAC5|F7F7F3|BAB4AC|A7B6C1)$/i.test(hex)) vivid=hex; document.documentElement.style.setProperty("--shade", vivid); document.documentElement.style.setProperty("--glow", hexA(vivid,.55)); }
+var ICON = {
+  scissors:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg>',
+  box:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7M12 11v10"/></svg>',
+  tick:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  google:'<svg viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>'
+};
+
+function poOf(n){ return CAT.pos.filter(function(p){ return p.po===n; })[0]; }
+function lineOf(){ var p=poOf(sel.po); return p && p.lines.filter(function(l){ return l.sku===sel.sku; })[0]; }
+function shadesOf(p){ var s={}; p.lines.forEach(function(l){ s[l.colour]=1; }); return Object.keys(s); }
+
+function go(step, back){ view.step=step; view.back=!!back; view.err=""; render(); window.scrollTo({top:0,behavior:"smooth"}); }
+
+function renderMe(){
+  var h="";
+  if(USER){
+    h='<div class="me">'+(USER.photoURL?'<img src="'+esc(USER.photoURL)+'" alt="" referrerpolicy="no-referrer">':'')+'<div><b>'+esc(F.getName(USER))+'</b><small>'+(F.isOwner(USER)?"Owner":esc(USER.email||""))+'</small></div><button class="ghost" id="out" type="button">Sign out</button></div>';
+  }
+  $("#me").innerHTML=h;
+  var o=$("#out"); if(o) o.onclick=function(){ F.signOut(); };
+}
+function renderCrumbs(){
+  var c=[];
+  if(sel.po) c.push('<span class="crumb">PO '+sel.po+'</span>');
+  if(sel.stage) c.push('<span class="crumb">'+(sel.stage==="cutting"?"Cutting":"Packing")+'</span>');
+  if(sel.shade) c.push('<span class="crumb"><span class="sw" style="background:'+(F.SWATCH[sel.shade]||"#999")+'"></span>'+esc(sel.shade)+'</span>');
+  if(sel.size) c.push('<span class="crumb">'+esc(F.SIZE_LABEL[sel.size]||sel.size)+'</span>');
+  var html=c.join(""), el=$("#crumbs"); if(el.dataset.v!==html){ el.innerHTML=html; el.dataset.v=html; }
+}
+function stepHead(n,title,back){
+  return '<div class="step-h"><div>'+(back?'<button class="backbtn" data-back="'+back+'" type="button">← Back</button>':'')+'<h2>'+title+'</h2></div><span class="n">STEP '+n+' / 5</span></div>';
+}
+
+function render(){
+  renderMe(); renderCrumbs();
+  var st=$("#stage"), h="";
+  if(!F || !F.ready){ st.innerHTML='<div class="err">The production system could not start. Check your internet connection and reload.</div>'; return; }
+  if(!USER){
+    setShade(null);
+    h='<div class="gate step"><h2>Sign in to add production</h2><p>Use your Google account. Your name is saved with every quantity you enter, and you can delete your own entries until midnight.</p><button class="gbtn" id="gin" type="button">'+ICON.google+'Sign in with Google</button><div id="gerr"></div></div>';
+    st.innerHTML=h; $("#entries").hidden=true;
+    $("#gin").onclick=function(){ F.signIn().catch(function(e){ $("#gerr").innerHTML='<div class="err">Sign-in did not finish ('+esc(e.code||e.message)+'). Try again.</div>'; }); };
+    return;
+  }
+  if(!CAT){ st.innerHTML='<div class="empty">Loading purchase orders…</div>'; return; }
+  var cls = view.back ? "step back" : "step";
+  if(view.step==="name"){
+    h='<div class="gate '+cls+'"><h2>What name should we show?</h2><p>This name appears next to every quantity you enter.</p><div class="namebox"><input id="nm" value="'+esc(F.getName(USER))+'" maxlength="60" aria-label="Your name"><button class="btn primary" id="nmok" type="button">Continue</button></div></div>';
+  } else if(view.step==="po"){
+    setShade(null);
+    var q=view.q.trim().toLowerCase();
+    var list=CAT.pos.filter(function(p){ return !q || String(p.po).indexOf(q)>-1 || p.lines.some(function(l){ return (l.colour+" "+l.product).toLowerCase().indexOf(q)>-1; }); });
+    h=stepHead(1,"Choose the PO")+'<input class="search" id="q" type="search" placeholder="Search PO number, shade or product" value="'+esc(view.q)+'" aria-label="Search POs"><div class="polist">'+
+      list.map(function(p,i){
+        var sh=shadesOf(p), cut=0, pk=0; p.lines.forEach(function(l){ var t=TOT[p.po+"|"+l.sku]; if(t){ cut+=t.cut; pk+=t.packed; } });
+        return '<button class="porow" type="button" data-po="'+p.po+'" style="animation-delay:'+Math.min(i*.025,.4)+'s"><span class="chk"></span><span><b>PO '+p.po+'</b><span class="meta">'+(p.b2b?'<span class="chip b2b">B2B</span>':'')+'<span class="chip">'+esc(p.products.join(" · "))+'</span><span class="chip">PO qty '+fmt(p.qty)+'</span>'+(p.ship?'<span class="chip">Ship '+esc(p.ship)+'</span>':'')+((cut||pk)?'<span class="chip">Cut '+fmt(cut)+' · Packed '+fmt(pk)+'</span>':'')+'</span></span><span class="dots">'+sh.slice(0,7).map(function(s){ return '<i style="background:'+(F.SWATCH[s]||"#999")+'" title="'+esc(s)+'"></i>'; }).join("")+'</span><span class="arrow" aria-hidden="true">›</span></button>';
+      }).join("")+(list.length?'':'<div class="empty">No PO matches that search.</div>')+'</div>';
+  } else if(view.step==="stage"){
+    h=stepHead(2,"PO "+sel.po+": cutting or packing?","po")+'<div class="tiles two">'+
+      '<button class="tile" data-stage="cutting" type="button" style="--tc:#5CC98A;--tglow:rgba(92,201,138,.5)">'+ICON.scissors+'<span class="big">Cutting</span><span class="sub">Pieces cut today</span></button>'+
+      '<button class="tile" data-stage="packing" type="button" style="--tc:#A7C4D6;--tglow:rgba(167,196,214,.5)">'+ICON.box+'<span class="big">Packing</span><span class="sub">Pieces packed today</span></button></div>';
+  } else if(view.step==="shade"){
+    var p=poOf(sel.po);
+    h=stepHead(3,"Choose the shade","stage")+'<div class="tiles">'+shadesOf(p).map(function(s){
+      var c=F.SWATCH[s]||"#999", q=0; p.lines.forEach(function(l){ if(l.colour===s) q+=l.qty; });
+      return '<button class="tile" type="button" data-shade="'+esc(s)+'" style="--tc:'+c+';--tglow:'+hexA(c,.55)+'"><span class="swl" style="background:'+c+'"></span><span class="big">'+esc(s)+'</span><span class="sub">PO qty '+fmt(q)+'</span></button>';
+    }).join("")+'</div>';
+  } else if(view.step==="size"){
+    var p2=poOf(sel.po), c2=F.SWATCH[sel.shade]||"#999";
+    h=stepHead(4,"Choose the size","shade")+'<div class="tiles">'+p2.lines.filter(function(l){ return l.colour===sel.shade; }).map(function(l){
+      var t=TOT[p2.po+"|"+l.sku]||{cut:0,packed:0}, done=sel.stage==="cutting"?t.cut:t.packed, pct=l.qty?Math.min(100,Math.round(done/l.qty*100)):0;
+      return '<button class="tile" type="button" data-sku="'+l.sku+'" style="--tc:'+c2+';--tglow:'+hexA(c2,.5)+'"><span class="big">'+esc(F.SIZE_LABEL[l.cls]||l.size)+'</span><span class="sub">'+esc(l.product)+' · '+esc(l.size)+' · '+l.sku+'</span><span class="sub">'+(sel.stage==="cutting"?"Cut ":"Packed ")+fmt(done)+' of '+fmt(l.qty)+'</span><span class="bar"><i style="width:'+pct+'%"></i></span></button>';
+    }).join("")+'</div>';
+  } else if(view.step==="qty"){
+    var l2=lineOf(), t2=TOT[sel.po+"|"+sel.sku]||{cut:0,packed:0}, done2=sel.stage==="cutting"?t2.cut:t2.packed, n=parseInt(view.qty||"0",10)||0;
+    var over = l2 && (done2+n) > l2.qty && n>0;
+    var packOver = sel.stage==="packing" && n>0 && (t2.packed+n) > t2.cut;
+    h=stepHead(5,"Enter the "+(sel.stage==="cutting"?"cut":"packed")+" quantity","size")+'<div class="qtywrap"><div><div class="display"><label for="qty">Pieces</label><input id="qty" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="'+esc(view.qty)+'" placeholder="0"></div>'+
+      '<div class="facts"><div>PO qty<b>'+fmt(l2?l2.qty:0)+'</b></div><div>'+(sel.stage==="cutting"?"Cut":"Packed")+' so far<b>'+fmt(done2)+'</b></div><div>After this<b>'+fmt(done2+n)+'</b></div></div>'+
+      (over?'<div class="warn">This takes '+(sel.stage==="cutting"?"cutting":"packing")+' to '+fmt(done2+n)+', above the PO qty of '+fmt(l2.qty)+'. You can still save it.</div>':'')+
+      (packOver?'<div class="warn">Packed ('+fmt(t2.packed+n)+') would be more than cut ('+fmt(t2.cut)+') for this size. You can still save it.</div>':'')+
+      (view.err?'<div class="err">'+esc(view.err)+'</div>':'')+
+      '</div><div class="pad">'+[1,2,3,4,5,6,7,8,9].map(function(d){ return '<button class="key" type="button" data-k="'+d+'">'+d+'</button>'; }).join("")+'<button class="key" type="button" data-k="C" aria-label="Clear">C</button><button class="key" type="button" data-k="0">0</button><button class="key" type="button" data-k="B" aria-label="Delete last digit">⌫</button><button class="enter" id="enter" type="button"'+(n>0?'':' disabled')+'>Enter</button></div></div>';
+  } else if(view.step==="done"){
+    var la=lastAdded||{};
+    h='<div class="done '+cls+'"><div class="tick">'+ICON.tick+'</div><h2>Saved: '+fmt(la.qty)+' pcs '+(la.stage==="cutting"?"cut":"packed")+'</h2><p>PO '+la.po+' · '+esc(la.shade)+' · '+esc(F.SIZE_LABEL[la.size]||la.size)+'. It is live on the Quince Matrix dashboard now.</p><div class="row"><button class="btn primary" data-again="size" type="button">Add another size</button><button class="btn" data-again="shade" type="button">Another shade</button><button class="btn" data-again="po" type="button">Choose another PO</button></div></div>';
+  }
+  st.innerHTML=h;
+  bind();
+  renderEntries();
+}
+
+function bind(){
+  document.querySelectorAll("[data-back]").forEach(function(b){ b.onclick=function(){ var to=b.dataset.back; if(to==="po"){ sel={po:null,stage:null,shade:null,sku:null,size:null}; } if(to==="stage"){ sel.stage=null; sel.shade=null; sel.sku=null; sel.size=null; } if(to==="shade"){ sel.shade=null; sel.sku=null; sel.size=null; setShade(null); } if(to==="size"){ sel.sku=null; sel.size=null; } go(to,true); }; });
+  var q=$("#q"); if(q){ q.oninput=function(){ view.q=q.value; var p=q.selectionStart; render(); var n=$("#q"); n.focus(); try{ n.setSelectionRange(p,p);}catch(e){} }; }
+  document.querySelectorAll("[data-po]").forEach(function(b){ b.onclick=function(){ sel.po=+b.dataset.po; go("stage"); }; });
+  document.querySelectorAll("[data-stage]").forEach(function(b){ b.onclick=function(){ sel.stage=b.dataset.stage; go("shade"); }; });
+  document.querySelectorAll("[data-shade]").forEach(function(b){ b.onclick=function(){ sel.shade=b.dataset.shade; setShade(F.SWATCH[sel.shade]); go("size"); }; });
+  document.querySelectorAll("[data-sku]").forEach(function(b){ b.onclick=function(){ var l=poOf(sel.po).lines.filter(function(x){ return x.sku===b.dataset.sku; })[0]; sel.sku=l.sku; sel.size=l.cls; view.qty=""; go("qty"); }; });
+  document.querySelectorAll("[data-k]").forEach(function(b){ b.onclick=function(){ var k=b.dataset.k; if(k==="C") view.qty=""; else if(k==="B") view.qty=view.qty.slice(0,-1); else if(view.qty.length<6) view.qty=(view.qty+k).replace(/^0+/,""); view.step="qty"; view.back=false; render(); }; });
+  var qi=$("#qty"); if(qi){ qi.oninput=function(){ view.qty=qi.value.replace(/\D/g,"").replace(/^0+/,"").slice(0,6); var p=qi.selectionStart; render(); var n=$("#qty"); n.focus(); try{ n.setSelectionRange(p,p);}catch(e){} }; qi.onkeydown=function(e){ if(e.key==="Enter"){ e.preventDefault(); save(); } }; if(!("ontouchstart" in window)) qi.focus(); }
+  var en=$("#enter"); if(en) en.onclick=save;
+  document.querySelectorAll("[data-again]").forEach(function(b){ b.onclick=function(){ var t=b.dataset.again; if(t==="po"){ sel={po:null,stage:null,shade:null,sku:null,size:null}; } if(t==="shade"){ sel.shade=null; sel.sku=null; sel.size=null; setShade(null); } if(t==="size"){ sel.sku=null; sel.size=null; } go(t,true); }; });
+  var nm=$("#nmok"); if(nm) nm.onclick=function(){ F.setName(USER,$("#nm").value).then(function(){ try{ localStorage.setItem("qm-named-"+USER.uid,"1"); }catch(e){} go("po"); }); };
+}
+
+function save(){
+  var n=parseInt(view.qty||"0",10); if(!(n>0)) return;
+  var l=lineOf(); var en=$("#enter"); if(en){ en.disabled=true; en.textContent="Saving…"; }
+  F.addEntry(USER,{po:sel.po,stage:sel.stage,sku:sel.sku,shade:sel.shade,size:sel.size,product:l?l.product:"",qty:n}).then(function(ref){
+    lastAdded={id:ref.id,po:sel.po,stage:sel.stage,shade:sel.shade,size:sel.size,qty:n};
+    var b=document.createElement("div"); b.className="burst"; document.body.appendChild(b); setTimeout(function(){ b.remove(); },1100);
+    var m=document.querySelector(".mark"); if(m){ m.style.boxShadow="0 0 0 1px var(--line),0 0 70px var(--glow)"; setTimeout(function(){ m.style.boxShadow=""; },900); }
+    view.qty=""; go("done");
+  }).catch(function(e){ view.err="Could not save ("+(e.code||e.message)+"). Check your connection and press Enter again."; view.step="qty"; render(); });
+}
+
+function renderEntries(){
+  var box=$("#entries"); if(!USER || view.step==="name"){ box.hidden=true; return; }
+  box.hidden=false;
+  var owner=F.isOwner(USER), today=F.istDay();
+  var rows=ROWS.filter(function(r){
+    if(view.entries==="mine") return r.uid===USER.uid && (r.ts && r.ts.toDate ? F.istDay(r.ts.toDate()) : r.day)===today;
+    if(view.entries==="today") return (r.ts && r.ts.toDate ? F.istDay(r.ts.toDate()) : r.day)===today;
+    return true;
+  });
+  var h='<div class="entries-h"><h3>'+(view.entries==="mine"?"My entries today":view.entries==="today"?"Everyone, today":"All entries")+'</h3><div class="seg" role="group" aria-label="Which entries">'+
+    '<button type="button" data-ev="mine" aria-pressed="'+(view.entries==="mine")+'">Mine today</button><button type="button" data-ev="today" aria-pressed="'+(view.entries==="today")+'">Everyone today</button>'+(owner?'<button type="button" data-ev="all" aria-pressed="'+(view.entries==="all")+'">All dates</button>':'')+'</div></div>';
+  if(!rows.length) h+='<div class="empty">No entries yet.</div>';
+  else h+='<div class="tbl"><table><thead><tr><th>Date</th><th>Time</th><th>PO</th><th>Stage</th><th>Design</th><th>Shade</th><th>Size</th><th class="r">Qty</th><th>Entered by</th><th></th></tr></thead><tbody>'+
+    rows.slice(0,300).map(function(r){
+      var d=F.entryDate(r), can=F.canDelete(USER,r);
+      return '<tr class="'+(lastAdded&&lastAdded.id===r.id?"fresh":"")+'"><td>'+(d?d.toLocaleDateString("en-IN",{day:"numeric",month:"short",timeZone:"Asia/Kolkata"}):esc(r.day))+'</td><td>'+(d?d.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",timeZone:"Asia/Kolkata"}):"…")+'</td><td>'+r.po+'</td><td><span class="stg '+r.stage+'">'+(r.stage==="cutting"?"Cutting":"Packing")+'</span></td><td>'+esc(r.product)+'</td><td>'+esc(r.shade)+'</td><td>'+esc(F.SIZE_LABEL[r.size]||r.size)+'</td><td class="r"><b>'+fmt(r.qty)+'</b></td><td>'+esc(r.name)+'</td><td>'+
+        (owner?'<button class="mini edit" type="button" data-edit="'+r.id+'">Edit</button> ':'')+(can?'<button class="mini" type="button" data-del="'+r.id+'">Delete</button>':'')+'</td></tr>';
+    }).join("")+'</tbody></table></div>';
+  box.innerHTML=h;
+  box.querySelectorAll("[data-ev]").forEach(function(b){ b.onclick=function(){ view.entries=b.dataset.ev; renderEntries(); }; });
+  box.querySelectorAll("[data-del]").forEach(function(b){ b.onclick=function(){
+    if(!b.dataset.armed){ b.dataset.armed="1"; b.textContent="Confirm delete"; return; }
+    b.disabled=true; F.deleteEntry(b.dataset.del).catch(function(e){ b.textContent="Locked"; b.title="Only today's own entries can be deleted ("+(e.code||"")+")"; });
+  }; });
+  box.querySelectorAll("[data-edit]").forEach(function(b){ b.onclick=function(){
+    var td=b.closest("tr").querySelector("td.r"); var cur=td.textContent.replace(/\D/g,"");
+    td.innerHTML='<input type="number" min="1" value="'+cur+'" style="width:80px;background:rgba(0,0,0,.3);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:3px 6px" aria-label="New quantity">';
+    var inp=td.querySelector("input"); inp.focus();
+    b.textContent="Save"; b.onclick=function(){ var v=parseInt(inp.value,10); if(v>0) F.updateQty(b.dataset.edit,v).catch(function(e){ b.textContent="Failed"; }); };
+  }; });
+}
+
+/* boot */
+fetch("catalog.json?v="+Date.now()).then(function(r){ return r.json(); }).then(function(c){ CAT=c; render(); }).catch(function(){ $("#stage").innerHTML='<div class="err">Could not load the PO list. Reload the page.</div>'; });
+if(F && F.ready){
+  F.auth.onAuthStateChanged(function(u){
+    USER=u;
+    if(u){
+      var named=false; try{ named=!!localStorage.getItem("qm-named-"+u.uid); }catch(e){}
+      if(!named) view.step="name";
+      if(!unsub) unsub=F.watchEntries(function(rows){ ROWS=rows; TOT=F.totals(rows); if(view.step!=="qty") render(); else renderEntries(); }, function(err){ console.error(err); });
+    }
+    render();
+  });
+  F.auth.getRedirectResult().catch(function(){});
+}
+render();
+})();
+</script>
+</body>
+</html>

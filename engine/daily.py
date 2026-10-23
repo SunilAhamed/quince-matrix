@@ -5,7 +5,7 @@ Run from the engine folder (/home/claude/build). Writes:
   site/index.html (public, no AWBs/order numbers), out/Quince_Matrix_Shop.xlsx,
   out/LIVE_ODR_QTY - <tab>.xlsx ; prints a JSON summary on the last line.
 """
-import sys, os, json, glob, hashlib, datetime, subprocess, copy, collections
+import shutil, sys, os, json, glob, hashlib, datetime, subprocess, copy, collections
 import openpyxl
 
 B = os.path.dirname(os.path.abspath(__file__)) + '/'
@@ -70,7 +70,28 @@ subprocess.run([sys.executable, '-I', B + 'assemble.py', B + 'out/public_state.j
 s = open(B + 'site/index.html').read()
 s = s.replace('Customer names and addresses are not stored on this page.',
               "Order numbers, AWB numbers and customer details are not published on this page. Updated after each day's order confirmation.")
+# production (separate from stock): Firebase scripts on the public page + PO catalog for production.html
+FB = 'https://www.gstatic.com/firebasejs/10.12.2/firebase-'
+tags = ''.join('<script src="%s%s-compat.js"></script>' % (FB, m) for m in ('app', 'auth', 'firestore')) + '<script src="qm-fire.js"></script><script src="prod-tab.js"></script>'
+s = s.rstrip() + '\n' + tags + '\n'  # page has no </body>; the inline JS contains '</body>' text, so append at the end
+if not s.lstrip().lower().startswith('<!doctype'): s = '<!doctype html>\n<meta charset="utf-8">\n' + s
 open(B + 'site/index.html', 'w').write(s)
+for f in ('production.html', 'qm-fire.js', 'prod-tab.js'):
+    shutil.copy(B + 'web/' + f, B + 'site/' + f)
+inspq = collections.Counter()
+for l in st['insp']: inspq[(l['po'], l['s'])] += l['q']
+pos_c = {}
+for c in st['catalog']:
+    for p in c.get('pos', []):
+        P = pos_c.setdefault(p['po'], {'po': p['po'], 'lines': [], 'qty': 0})
+        P['lines'].append({'sku': c['sku'], 'product': c['product'], 'colour': c['colour'], 'size': c['size'], 'cls': c['cls'], 'qty': p['qty'], 'insp': inspq[(p['po'], c['sku'])]})
+        P['qty'] += p['qty']
+ship = st.get('b2b', {}).get('ship', {})
+for P in pos_c.values():
+    P['b2b'] = P['po'] in B2B
+    P['ship'] = ship.get(str(P['po']), '')
+    P['products'] = sorted({l['product'] for l in P['lines']})
+json.dump({'updated': st['updated'], 'pos': sorted(pos_c.values(), key=lambda P: -P['po'])}, open(B + 'site/catalog.json', 'w'), separators=(',', ':'))
 os.remove(B + 'out/public_state.json')
 
 # ---------- Excel shop ----------

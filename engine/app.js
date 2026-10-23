@@ -69,6 +69,8 @@ function render(){
   M = compute(STATE);
   renderHeader(); renderKpis(); renderRules(); renderTabs();
   var v = $("#view");
+  var X = window.QM_EXT;
+  if(ui.tab==="production" && X && X.view){ v.innerHTML = X.view(); if(X.bind) X.bind(v); return; }
   v.innerHTML = ui.tab==="shop" ? viewShop() : ui.tab==="po" ? viewPO() : ui.tab==="analytics" ? viewAnalytics() : ui.tab==="b2b" ? viewB2B() : viewActivity();
   bindView();
 }
@@ -83,6 +85,7 @@ function renderHeader(){
   } else {
     h += '<span class="viewonly">View only</span>';
   }
+  if(window.QM_EXT && window.QM_EXT.actions) h += window.QM_EXT.actions();
   if(DOWNLOADS) h += '<button class="btn" id="dl" type="button">'+ico("down")+'Download summary</button>';
   a.innerHTML = h;
 }
@@ -496,6 +499,7 @@ document.addEventListener("click", function(e){
 });
 var hash=(location.hash||"").slice(1); if(["shop","po","analytics","b2b","activity"].indexOf(hash)>-1) ui.tab=hash;
 render();
+window.QM_APP = { state: STATE, render: render, setTab: function(t){ ui.tab=t; try{ history.replaceState(null,"","#"+t); }catch(err){} render(); }, tab: function(){ return ui.tab; }, inspected: function(){ var m={}; STATE.insp.forEach(function(l){ var k=l.po+"|"+l.s; m[k]=(m[k]||0)+l.q; }); return m; } };
 if(window.claude && window.claude.use){
   Promise.all([window.claude.use("artifact").catch(function(){return null;}), window.claude.use("user").catch(function(){return null;}), window.claude.use("downloads").catch(function(){return null;})]).then(function(r){
     ARTIFACT=r[0]; DOWNLOADS=r[2];
