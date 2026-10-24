@@ -413,12 +413,12 @@ cc['X1'] = 'Lines that day'; cc['X2'] = f'=COUNTIFS({OD},V2,{OQ},">0")'
 
 # KPI tiles rows 5-7 (6 tiles, each 2 columns + gap columns between handled by width)
 tiles = [
-    ('B', 'C', 'INSPECTED', f'=Shop!G{T}', f'="pcs across "&SUMPRODUCT(({ID}<>"")/COUNTIFS({ID},{ID}&"",\'Add Inspection\'!$B${I0}:$B${I1},\'Add Inspection\'!$B${I0}:$B${I1}&""))&" lot lines"', 'Add Inspection'),
-    ('D', 'E', 'SOLD', f'=Shop!H{T}', f'="pcs  ·  "&COUNTIF(Daily!$B$2:$B${DY},">0")&" order days"', 'Add Orders'),
+    ('B', 'C', 'INSPECTED', f'=Shop!G{T}+SUMIFS(\'B2B Dispatch\'!$F$8:$F$400,\'B2B Dispatch\'!$B$8:$B$400,"PO *")', f'="pcs across "&SUMPRODUCT(({ID}<>"")/COUNTIFS({ID},{ID}&"",\'Add Inspection\'!$B${I0}:$B${I1},\'Add Inspection\'!$B${I0}:$B${I1}&""))&" lot lines"', 'Add Inspection'),
+    ('D', 'E', 'SOLD + DISPATCHED', f'=Shop!H{T}+SUMIFS(\'B2B Dispatch\'!$H$8:$H$400,\'B2B Dispatch\'!$B$8:$B$400,"PO *")', f'=TEXT(Shop!H{T},"#,##0")&" shop + "&TEXT(SUMIFS(\'B2B Dispatch\'!$H$8:$H$400,\'B2B Dispatch\'!$B$8:$B$400,"PO *"),"#,##0")&" B2B"', 'Add Orders'),
     ('F', 'G', 'IN STOCK', f'=Shop!I{T}', f'="pcs  ·  "&TEXT(IF(Shop!G{T}=0,0,Shop!H{T}/Shop!G{T}),"0%")&" sold through"', 'Shop'),
     ('H', 'I', 'LAST 7 ORDER DAYS', '=Calc!S2', '=IF(Calc!T2=0,"pcs",TEXT(Calc!S2/Calc!T2-1,"+0%;-0%")&" vs previous 7")', 'Shop'),
     ('K', 'L', 'LIVE SKUs', f'=COUNTIF(Shop!$P${S0}:$P${S1},"Live shop")', '="with stock on the portal"', 'Shop'),
-    ('M', 'N', 'B2B TO DISPATCH', "='B2B Dispatch'!$G$5", "='B2B Dispatch'!$H$5", 'B2B Dispatch'),
+    ('M', 'N', 'B2B DISPATCHED', "=SUMIFS('B2B Dispatch'!$H$8:$H$400,'B2B Dispatch'!$B$8:$B$400,\"PO *\")", "=IF('B2B Dispatch'!$G$5>0,TEXT('B2B Dispatch'!$G$5,\"#,##0\")&\" pcs still to dispatch\",\"B2B complete\")", 'B2B Dispatch'),
     ('O', 'Q', 'SELLING FAST', f'=COUNTIFS(Shop!$N${S0}:$N${S1},"<=5")', '="live SKUs with ≤ 5 order days left"', 'Shop'),
 ]
 for c1, c2, lab, val, subf, link in tiles:
@@ -434,7 +434,7 @@ for c1, c2, lab, val, subf, link in tiles:
 db.row_dimensions[5].height = 18; db.row_dimensions[6].height = 34; db.row_dimensions[7].height = 18
 db.conditional_formatting.add('O6', CellIsRule(operator='greaterThan', formula=['0'], font=Font(name=F, size=22, bold=True, color=RED)))
 # inspection tile sub: simpler & robust
-db['B7'] = f'="pcs across "&SUMPRODUCT(1/COUNTIF(\'Add Inspection\'!$B${I0}:$B${I0+len(st["insp"])+200},\'Add Inspection\'!$B${I0}:$B${I0+len(st["insp"])+200}&""))-1&" inspections"'
+db['B7'] = f'="pcs across "&SUMPRODUCT(1/COUNTIF(\'Add Inspection\'!$B${I0}:$B${I0+len(st["insp"])+200},\'Add Inspection\'!$B${I0}:$B${I0+len(st["insp"])+200}&""))-1&" inspections  ·  incl. "&TEXT(SUMIFS(\'B2B Dispatch\'!$F$8:$F$400,\'B2B Dispatch\'!$B$8:$B$400,"PO *"),"#,##0")&" B2B"'
 
 # Live shop panel rows 9-24 (B..I)
 db.merge_cells('B9:I9'); db['B9'] = 'LIVE SHOP  ·  lowest stock first  ·  click an SKU to open it'; db['B9'].font = font(10, True, PINE)

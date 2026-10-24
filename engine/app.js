@@ -100,13 +100,15 @@ function renderKpis(){
   var lastPcs = M.days[M.lastDay]||0;
   var lastOrders = {}; M.sales.forEach(function(x){ if(x.d===M.lastDay) lastOrders[x.o]=1; });
   var orders = {}; M.sales.forEach(function(x){ orders[x.o]=1; });
+  var bIn=0, bOut=0, bPend=0; M.b2b.forEach(function(b){ bIn+=b.insp; bOut+=b.sent; bPend+=b.pending; });
   var k = [
-    ["Inspected", fmt(insp), "pcs across "+Object.keys(nInsp).length+" inspections"],
-    ["Sold", fmt(sold), "pcs · "+fmt(Object.keys(orders).length)+" orders · "+M.dayList.length+" days"],
-    ["In stock", fmt(bal), "pcs · "+Math.round(sold/Math.max(insp,1)*100)+"% sold through"],
+    ["Inspected", fmt(insp+bIn), bIn ? fmt(insp)+" shop + "+fmt(bIn)+" B2B · "+Object.keys(nInsp).length+" inspections" : "pcs across "+Object.keys(nInsp).length+" inspections"],
+    ["Sold & dispatched", fmt(sold+bOut), bOut ? fmt(sold)+" shop ("+fmt(Object.keys(orders).length)+" orders) + "+fmt(bOut)+" B2B" : "pcs · "+fmt(Object.keys(orders).length)+" orders · "+M.dayList.length+" days"],
+    ["In stock", fmt(bal), "pcs in the shop · "+Math.round(sold/Math.max(insp,1)*100)+"% sold through"],
     ["Last order day", fmt(lastPcs), "pcs on "+dlong(M.lastDay)+" · "+Object.keys(lastOrders).length+" orders"],
     ["Live SKUs", fmt(live), fmt(empty)+" more in the empty bucket"],
-    ["B2B to dispatch", fmt(M.b2b.reduce(function(a,b){return a+b.pending;},0)), M.b2b.filter(function(b){return b.st==="ready";}).length+" PO(s) inspected, waiting for buyer"]
+    bPend ? ["B2B to dispatch", fmt(bPend), M.b2b.filter(function(b){return b.st==="ready";}).length+" PO(s) inspected, waiting for buyer"]
+          : ["B2B dispatched", fmt(bOut), M.b2b.length ? "PO "+M.b2b.map(function(b){return b.po;}).join(", ")+" · complete" : "no B2B POs"]
   ];
   $("#kpis").innerHTML = k.map(function(x){ return '<div class="kpi"><div class="l">'+x[0]+'</div><div class="v">'+x[1]+'</div><div class="s">'+esc(x[2])+'</div></div>'; }).join("");
 }
