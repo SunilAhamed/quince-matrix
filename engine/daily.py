@@ -78,6 +78,13 @@ if not s.lstrip().lower().startswith('<!doctype'): s = '<!doctype html>\n<meta c
 open(B + 'site/index.html', 'w').write(s)
 for f in ('production.html', 'qm-fire.js', 'prod-tab.js', 'fabric.html', 'qm-fabric.js'):
     shutil.copy(B + 'web/' + f, B + 'site/' + f)
+# cache-busting: script URLs carry a build stamp so phones load the new code at once
+VER = datetime.datetime.now().strftime('%Y%m%d%H%M')
+for f in ('index.html', 'production.html', 'fabric.html'):
+    t = open(B + 'site/' + f).read()
+    for js in ('qm-fire.js', 'qm-fabric.js', 'prod-tab.js'):
+        t = t.replace('src="%s"' % js, 'src="%s?v=%s"' % (js, VER))
+    open(B + 'site/' + f, 'w').write(t)
 inspq = collections.Counter()
 for l in st['insp']: inspq[(l['po'], l['s'])] += l['q']
 pos_c = {}
