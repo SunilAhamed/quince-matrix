@@ -76,7 +76,7 @@ tags = ''.join('<script src="%s%s-compat.js"></script>' % (FB, m) for m in ('app
 s = s.rstrip() + '\n' + tags + '\n'  # page has no </body>; the inline JS contains '</body>' text, so append at the end
 if not s.lstrip().lower().startswith('<!doctype'): s = '<!doctype html>\n<meta charset="utf-8">\n' + s
 open(B + 'site/index.html', 'w').write(s)
-for f in ('production.html', 'qm-fire.js', 'prod-tab.js'):
+for f in ('production.html', 'qm-fire.js', 'prod-tab.js', 'fabric.html', 'qm-fabric.js'):
     shutil.copy(B + 'web/' + f, B + 'site/' + f)
 inspq = collections.Counter()
 for l in st['insp']: inspq[(l['po'], l['s'])] += l['q']
@@ -91,7 +91,7 @@ for P in pos_c.values():
     P['b2b'] = P['po'] in B2B
     P['ship'] = ship.get(str(P['po']), '')
     P['products'] = sorted({l['product'] for l in P['lines']})
-json.dump({'updated': st['updated'], 'pos': sorted(pos_c.values(), key=lambda P: -P['po'])}, open(B + 'site/catalog.json', 'w'), separators=(',', ':'))
+json.dump({'updated': st['updated'], 'fabric_history': st.get('fabric_history'), 'pos': sorted(pos_c.values(), key=lambda P: -P['po'])}, open(B + 'site/catalog.json', 'w'), separators=(',', ':'))
 os.remove(B + 'out/public_state.json')
 
 # ---------- Excel shop ----------

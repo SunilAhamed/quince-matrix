@@ -39,5 +39,34 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['name','email','updated'])
         && request.resource.data.name is string && request.resource.data.name.size() <= 60;
     }
+
+    // ---------- fabric reconciliation ----------
+    // fabric lots (inward kg, hold, done, balance kg): everyone reads, only the owner writes
+    match /lots/{id} {
+      allow read: if true;
+      allow write: if isOwner();
+    }
+    // settings (kg per metre, cut sizes): only the owner writes
+    match /settings/{id} {
+      allow read: if true;
+      allow write: if isOwner();
+    }
+    // fabric sent to dye house: anyone signed in can add; own entries deletable the same day, owner any time
+    match /dyesend/{id} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['lot','shade','kg','note','uid','name','ts'])
+        && request.resource.data.lot is string && request.resource.data.lot.size() <= 40
+        && request.resource.data.shade is string && request.resource.data.shade.size() <= 30
+        && request.resource.data.kg is number && request.resource.data.kg > 0 && request.resource.data.kg <= 100000
+        && request.resource.data.note is string && request.resource.data.note.size() <= 120
+        && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 60
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.ts == request.time;
+      allow update: if isOwner();
+      allow delete: if isOwner()
+        || (signedIn() && resource.data.uid == request.auth.uid
+            && istDay(resource.data.ts) == istDay(request.time));
+    }
   }
 }

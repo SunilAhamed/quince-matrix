@@ -45,13 +45,14 @@ db = wb.active; db.title = 'Dashboard'
 sh = wb.create_sheet('Shop')
 po = wb.create_sheet('PO Ledger')
 bb = wb.create_sheet('B2B Dispatch')
+fx = wb.create_sheet('Fabric Reco')
 ins = wb.create_sheet('Add Inspection')
 od = wb.create_sheet('Add Orders')
 cat = wb.create_sheet('Catalog')
 dy = wb.create_sheet('Daily')
 cc = wb.create_sheet('Calc')
 
-NAV = [('Dashboard', 'Dashboard'), ('Shop', 'Shop'), ('PO Ledger', 'PO Ledger'), ('B2B Dispatch', 'B2B dispatch'), ('Add Inspection', '+ Add inspection'), ('Add Orders', '+ Add orders')]
+NAV = [('Dashboard', 'Dashboard'), ('Shop', 'Shop'), ('PO Ledger', 'PO Ledger'), ('B2B Dispatch', 'B2B dispatch'), ('Fabric Reco', 'Fabric reco'), ('Add Inspection', '+ Add inspection'), ('Add Orders', '+ Add orders')]
 
 def navbar(ws, current, row=1, start_col=2, span=2):
     ws.row_dimensions[row].height = 24
@@ -562,7 +563,101 @@ db[f'B{r0+9}'].font = font(8.5, False, MUTED)
 
 # finish
 for ws in (cat, dy, cc): ws.sheet_state = 'hidden'
-tabc = {'Dashboard': INK, 'Shop': PINE, 'PO Ledger': PINE, 'B2B Dispatch': PINE, 'Add Inspection': YEL, 'Add Orders': YEL}
+
+# ======================= Fabric Reco =======================
+# live lots come from fabric.json (snapshot of the website's Fabric Reco page, taken in the daily run); history from state.json
+navbar(fx, 'Fabric Reco')
+FJ = None
+try: FJ = json.load(open(B + 'fabric.json'))
+except Exception: FJ = None
+KPM = (FJ or {}).get('kgPerMtr', 0.66)
+title_band(fx, 2, 'Fabric reco', ('Snapshot of the website Fabric Reco page, ' + FJ['asof'][:10] + '. ' if FJ else 'No live snapshot yet. ') +
+           f'Used kg = cut qty x cut size x 0.0254 m x {KPM} kg/m (Cutting entries only). Diff = Inward - Used; Bal OK/REJ kg count as used once entered. Live page: sunilahamed.github.io/quince-matrix/fabric.html', 2, 17)
+FH = ['Design', 'Shade', 'Size', 'Cut qty', 'Cut size (inch)', 'Average (mtr/pc)', 'Used mtr', 'Used kg', 'Bal OK kg', 'Bal REJ kg', 'Fabric sent kg', 'Total used kg', 'Inward kg', 'Diff kg', 'Diff mtr', 'Lot']
+header(fx, 5, FH, 2)
+NAVY = '1F3864'
+for i in range(len(FH)): fx.cell(row=5, column=2 + i).fill = fill(NAVY)
+r = 6
+STL = {'running': 'Running', 'hold': 'On hold', 'done': 'Done'}
+lots = (FJ or {}).get('lots', [])
+if not lots:
+    fx.cell(row=r, column=2, value='No fabric inward entered yet on the website.').font = font(10, False, MUTED); r += 1
+first_rows = []
+for L in lots:
+    rows = L['rows'] or [{'product': '', 'shade': L['shade'], 'size': '', 'qty': 0, 'cutIn': None, 'avg': None, 'mtr': 0, 'kg': 0}]
+    a = r
+    for R in rows:
+        vals = [R['product'], R['shade'].upper(), (R['size'] or '').upper(), R['qty'], R['cutIn'], R['avg']]
+        for j, v in enumerate(vals): fx.cell(row=r, column=2 + j, value=v)
+        fx.cell(row=r, column=8, value=f'=E{r}*G{r}' if R['avg'] is not None else 0)
+        fx.cell(row=r, column=9, value=f'=H{r}*{KPM}')
+        r += 1
+    b = r - 1
+    lotv = [(10, L['balOk']), (11, L['balRej']), (12, L['sent'] or None), (13, f'=SUM(I{a}:I{b})+N(J{a})+N(K{a})'), (14, L['kg']),
+            (15, f'=N{a}-M{a}'), (16, f'=O{a}/{KPM}'), (17, f"{STL.get(L['status'], L['status'])} · inward {L['date']}" + (f" · {L['note']}" if L.get('note') else ''))]
+    for col, v in lotv:
+        if b > a: fx.merge_cells(start_row=a, start_column=col, end_row=b, end_column=col)
+        c = fx.cell(row=a, column=col, value=v); c.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True); c.font = font(10, True)
+    for col in (10, 11): fx.cell(row=a, column=col).fill = fill(YEL_BG)
+    for rr in range(a, b + 1):
+        for col in range(2, 18):
+            fx.cell(row=rr, column=col).border = Border(left=thin, right=thin, bottom=thin, top=Side(style='medium', color=NAVY) if rr == a else thin)
+    first_rows.append(a)
+if lots:
+    fx.cell(row=r, column=2, value='TOTAL')
+    last = r - 1
+    for col in 'EHI': fx[f'{col}{r}'] = f'=SUM({col}6:{col}{last})'
+    for col in 'JKLMNOP': fx[f'{col}{r}'] = f'=SUM({col}6:{col}{last})'
+    for col in range(2, 18):
+        c = fx.cell(row=r, column=col); c.font = font(10, True); c.fill = fill('DDEBF7'); c.border = box
+    r += 1
+for row in range(6, r):
+    fx.cell(row=row, column=7).number_format = '0.0000'
+    for col in range(8, 17): fx.cell(row=row, column=col).number_format = '#,##0.00;[Red]-#,##0.00'
+fx.conditional_formatting.add(f'O6:P{max(r, 7)}', CellIsRule(operator='lessThan', formula=['0'], font=Font(name=F, bold=True, color=RED)))
+un = (FJ or {}).get('unlinked', [])
+if un:
+    r += 1
+    fx.cell(row=r, column=2, value='Cutting with no running inward for that shade (not in any lot)').font = font(10, True, RED); r += 1
+    for R in un:
+        for j, v in enumerate([R['product'], R['shade'].upper(), R['size'].upper(), R['qty']]): fx.cell(row=r, column=2 + j, value=v)
+        fx.cell(row=r, column=9, value=R['kg']).number_format = '#,##0.00'; r += 1
+
+# history (owner's sheet, before live fabric reco)
+H = st.get('fabric_history')
+if H:
+    r += 2
+    fx.merge_cells(start_row=r, start_column=2, end_row=r, end_column=17)
+    fx.cell(row=r, column=2, value='HISTORY · ' + H['title'].upper()).font = font(12, True, NAVY); r += 1
+    fx.merge_cells(start_row=r, start_column=2, end_row=r, end_column=17)
+    fx.cell(row=r, column=2, value=H['note']).font = font(9, False, MUTED); r += 1
+    HH = ['Colour', 'Size', 'Inspected qty', 'OK qty', 'Cut size (inch)', 'Average (mtr/pc)', 'Bal REJ mtr', 'Used mtr', 'Bal OK kg', 'Bal REJ kg', 'Fabric sent kg', 'Used kg', 'Inward kg', 'Inward mtr', 'Diff kg', 'Diff mtr']
+    header(fx, r, HH, 2)
+    for i in range(len(HH)): fx.cell(row=r, column=2 + i).fill = fill(NAVY)
+    r += 1; h0 = r
+    for L in H['lots']:
+        rs = [x for x in H['rows'] if x['colour'] == L['colour']]; a = r
+        for x in rs:
+            for j, v in enumerate([x['colour'].upper(), x['size'].upper(), x['insp'], x['ok'] or None, x['cutIn'], round(x['cutIn'] * 0.0254, 4)]):
+                fx.cell(row=r, column=2 + j, value=v)
+            r += 1
+        for k, key in enumerate(['balRejMtr', 'usedMtr', 'balOkKg', 'balRejKg', 'sentKg', 'usedKg', 'inKg', 'inMtr', 'diffKg', 'diffMtr']):
+            col = 8 + k
+            if r - 1 > a: fx.merge_cells(start_row=a, start_column=col, end_row=r - 1, end_column=col)
+            c = fx.cell(row=a, column=col, value=L[key]); c.alignment = CENTER; c.number_format = '#,##0.00;[Red]-#,##0.00'
+        for rr in range(a, r):
+            for col in range(2, 18): fx.cell(row=rr, column=col).border = box
+    fx.cell(row=r, column=2, value='TOTAL')
+    for col in 'DEIL': pass
+    for col in ['D', 'E', 'I', 'L', 'M', 'N', 'O', 'P', 'Q']: fx[f'{col}{r}'] = f'=SUM({col}{h0}:{col}{r - 1})'
+    for col in range(2, 18):
+        c = fx.cell(row=r, column=col); c.font = font(10, True); c.fill = fill('DDEBF7'); c.border = box
+        if col >= 8: c.number_format = '#,##0;[Red]-#,##0'
+    for rr in range(h0, r): fx.cell(row=rr, column=7).number_format = '0.0000'
+widths(fx, {'A': 2, 'B': 20, 'C': 12, 'D': 13, 'E': 9, 'F': 10, 'G': 11, 'H': 11, 'I': 11, 'J': 10, 'K': 10, 'L': 11, 'M': 12, 'N': 11, 'O': 11, 'P': 11, 'Q': 26})
+fx.freeze_panes = 'B6'
+
+tabc = {'Dashboard': INK, 'Shop': PINE, 'PO Ledger': PINE, 'B2B Dispatch': PINE, 'Fabric Reco': '1F3864', 'Add Inspection': YEL, 'Add Orders': YEL}
 for ws in wb.worksheets: ws.sheet_properties.tabColor = tabc.get(ws.title, 'B5C1BB')
 for ws in (sh, po, bb, ins, od):
     ws.sheet_view.showGridLines = False

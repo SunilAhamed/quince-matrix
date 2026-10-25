@@ -248,8 +248,8 @@ function markB2B(po){
 function viewActivity(){
   var items = STATE.log.slice().reverse();
   return '<div class="log">'+items.map(function(l){
-    var kind = l.kind==="inspection" ? "Inspection" : l.kind==="orders" ? "Daily orders" : l.kind==="rules" ? "Colour rules" : l.kind==="b2b" ? "B2B dispatch" : "History";
-    return '<div class="log-i"><div class="k">'+kind+'</div><div><b>'+esc(l.f)+'</b><p>'+esc(l.n||"")+'</p></div><div class="num" style="color:var(--muted);font-size:12.5px">'+esc(l.at)+(l.pcs!=null?' · '+(l.kind==="orders"||l.kind==="b2b"?"−":"+")+fmt(l.pcs)+' pcs':'')+'</div></div>';
+    var kind = l.kind==="inspection" ? "Inspection" : l.kind==="orders" ? "Daily orders" : l.kind==="rules" ? "Colour rules" : l.kind==="b2b" ? "B2B dispatch" : l.kind==="fabric" ? "Fabric reco" : "History";
+    return '<div class="log-i"><div class="k">'+kind+'</div><div><b>'+esc(l.f)+'</b><p>'+esc(l.n||"")+'</p></div><div class="num" style="color:var(--muted);font-size:12.5px">'+esc(l.at)+(l.pcs!=null?' · '+(l.kind==="fabric"?"":(l.kind==="orders"||l.kind==="b2b"?"−":"+"))+fmt(l.pcs)+' pcs':'')+'</div></div>';
   }).join("")+'</div>';
 }
 function bindView(){

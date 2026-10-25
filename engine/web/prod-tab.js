@@ -16,6 +16,7 @@
     ".pu-btn{position:relative;border:1px solid transparent;border-radius:8px;padding:8px 14px;font-weight:600;display:inline-flex;gap:8px;align-items:center;white-space:nowrap;text-decoration:none;color:#0E1311;background:linear-gradient(120deg,#3FB596,#9AE6C9,#3FB596);background-size:220% 100%;box-shadow:0 0 0 1px rgba(63,181,150,.4),0 0 18px rgba(63,181,150,.35);animation:puShine 6s linear infinite;transition:transform .15s,box-shadow .25s}" +
     ".pu-btn:hover{transform:translateY(-1px);box-shadow:0 0 0 1px #3FB596,0 0 30px rgba(63,181,150,.7)}" +
     ".pu-btn svg{width:16px;height:16px}" +
+    ".pu-fab{background:linear-gradient(120deg,#C9B8A3,#F1E6D6,#C9B8A3);background-size:220% 100%;box-shadow:0 0 0 1px rgba(201,184,163,.5),0 0 18px rgba(201,184,163,.35)}.pu-fab:hover{box-shadow:0 0 0 1px #C9B8A3,0 0 30px rgba(201,184,163,.75)}" +
     "@keyframes puShine{to{background-position:-220% 0}}" +
     ".pu-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}" +
     ".pu-kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}" +
@@ -180,7 +181,7 @@
   }
 
   window.QM_EXT = {
-    actions: function () { return '<a class="pu-btn" href="production.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg>Production Update</a>'; },
+    actions: function () { return '<a class="pu-btn" href="production.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg>Production Update</a><a class="pu-btn pu-fab" href="fabric.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6c0-1.1 3.6-2 8-2s8 .9 8 2-3.6 2-8 2-8-.9-8-2z"/><path d="M4 6v12c0 1.1 3.6 2 8 2s8-.9 8-2V6"/><path d="M4 12c0 1.1 3.6 2 8 2s8-.9 8-2"/></svg>Fabric Reco</a>'; },
     view: view, bind: bind
   };
   if ((location.hash || "").slice(1) === "production") A.setTab("production"); else A.render();
