@@ -90,7 +90,7 @@ tr.tot td{font-weight:700;background:rgba(63,181,150,.08);border-bottom:0}
     <div id="me"></div>
   </header>
   <div id="app"><div class="empty">Loading fabric reco…</div></div>
-  <p class="foot">Fabric used = cut pcs (Production Update, Cutting only) × cut size × 0.0254 m × kg per metre. Diff = Inward − Used; Bal OK and Bal REJ kg count as used once the owner enters them.</p>
+  <p class="foot">Fabric reco counts cutting from 25 Oct 2026 (fresh start; earlier cutting was already reconciled). Fabric used = cut pcs (Production Update, Cutting only) × cut size × 0.0254 m × kg per metre. Diff = Inward − Used; Bal OK and Bal REJ kg count as used once the owner enters them.</p>
 </div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -168,7 +168,7 @@ function ownerPanel(){
   var list=X.SHADE_ORDER.filter(function(s){return shades[s];}).concat(Object.keys(shades).filter(function(s){return X.SHADE_ORDER.indexOf(s)<0;}));
   var S=M.settings, today=F.istDay();
   return '<section class="panel"><h3>Fabric inward <span class="owner-tag">Owner only</span></h3><div class="form" id="inw"><label class="fld">Shade<select data-f="shade">'+list.map(function(s){return '<option>'+esc(s)+'</option>';}).join("")+'</select></label><label class="fld">Inward kg<input type="number" step="0.01" min="0" data-f="kg" placeholder="e.g. 220"></label><label class="fld">Inward date<input type="date" data-f="date" value="'+today+'"></label><label class="fld">Note (optional)<input data-f="note" maxlength="80" placeholder="Dye lot / challan"></label><button class="btn primary" id="addlot" type="button">Add inward</button></div></section>'+
-    '<section class="panel"><h3>Consumption settings <span class="owner-tag">Owner only</span></h3><div class="form" id="set"><label class="fld">Kg per metre<input type="number" step="0.001" min="0" data-f="f" value="'+S.kgPerMtr+'"></label>'+X.SIZE_ORDER.map(function(k){return '<label class="fld">'+esc(sizeL(k))+' cut (inch)<input type="number" step="0.1" min="0" data-c="'+esc(k)+'" value="'+S.cutIn[k]+'"></label>';}).join("")+'<button class="btn" id="saveset" type="button">Save settings</button></div></section>';
+    '<section class="panel"><h3>Consumption settings <span class="owner-tag">Owner only</span></h3><div class="form" id="set"><label class="fld">Count cutting from<input type="date" data-f="start" value="'+S.startDate+'"></label><label class="fld">Kg per metre<input type="number" step="0.001" min="0" data-f="f" value="'+S.kgPerMtr+'"></label>'+X.SIZE_ORDER.map(function(k){return '<label class="fld">'+esc(sizeL(k))+' cut (inch)<input type="number" step="0.1" min="0" data-c="'+esc(k)+'" value="'+S.cutIn[k]+'"></label>';}).join("")+'<button class="btn" id="saveset" type="button">Save settings</button></div></section>';
 }
 
 function histView(){
@@ -232,7 +232,7 @@ function bind(){
   };});
   app.querySelectorAll("[data-deldye]").forEach(function(b){b.onclick=function(){ if(!b.dataset.armed){b.dataset.armed="1";b.textContent="Confirm";return;} b.disabled=true; X.deleteDye(b.dataset.deldye).catch(fail); };});
   var al=$("#addlot"); if(al) al.onclick=function(){ var box=$("#inw"), kg=parseFloat(val(box,"kg")), d=val(box,"date"), s=val(box,"shade"); if(!(kg>0)||!d||!s) return; al.disabled=true; X.addLot({shade:s,kg:kg,date:d,note:val(box,"note")}).then(function(){toast("Inward added: "+s+" "+n2(kg)+" kg");}).catch(function(e){al.disabled=false;fail(e);}); };
-  var ss=$("#saveset"); if(ss) ss.onclick=function(){ var box=$("#set"), f=parseFloat(val(box,"f")), c={}; box.querySelectorAll("[data-c]").forEach(function(i){c[i.dataset.c]=parseFloat(i.value)||X.DEFAULTS.cutIn[i.dataset.c];}); if(!(f>0)) return; ss.disabled=true; X.saveSettings({kgPerMtr:f,cutIn:c}).then(function(){toast("Settings saved");}).catch(function(e){ss.disabled=false;fail(e);}); };
+  var ss=$("#saveset"); if(ss) ss.onclick=function(){ var box=$("#set"), f=parseFloat(val(box,"f")), c={}; box.querySelectorAll("[data-c]").forEach(function(i){c[i.dataset.c]=parseFloat(i.value)||X.DEFAULTS.cutIn[i.dataset.c];}); if(!(f>0)) return; ss.disabled=true; X.saveSettings({startDate:val(box,"start")||X.DEFAULTS.startDate,kgPerMtr:f,cutIn:c}).then(function(){toast("Settings saved");}).catch(function(e){ss.disabled=false;fail(e);}); };
   var xl=$("#xl"); if(xl) xl.onclick=function(){ xl.disabled=true; xl.textContent="Preparing…"; excel().then(function(){xl.disabled=false;xl.textContent="Download Excel (Fabric reco)";},function(e){console.error(e);xl.disabled=false;xl.textContent="Download failed, try again";}); };
 }
 

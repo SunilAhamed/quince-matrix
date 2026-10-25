@@ -4,7 +4,7 @@
 (function () {
   "use strict";
   var F = window.QMFire;
-  var DEFAULTS = { kgPerMtr: 0.66, cutIn: { "TWIN": 76, "FULL/QUEEN": 94, "KING/CAL KING": 110, "THROW": 52 } };
+  var DEFAULTS = { startDate: "2026-10-25", kgPerMtr: 0.66, cutIn: { "TWIN": 76, "FULL/QUEEN": 94, "KING/CAL KING": 110, "THROW": 52 } };
   var PRODUCTS = ["Waffle Throw", "Waffle Bed Blanket"];
   var SIZE_ORDER = ["TWIN", "FULL/QUEEN", "KING/CAL KING", "THROW"];
   var SHADE_ORDER = ["Dove", "Espresso", "Mist", "Undyed", "Mineral", "Dried Sage", "White"];
@@ -13,10 +13,11 @@
   function ms(t) { return t && t.toMillis ? t.toMillis() : (typeof t === "number" ? t : Date.now()); }
   function dayStart(d) { return Date.parse(d + "T00:00:00+05:30"); }
   function settingsOf(doc) {
-    var s = { kgPerMtr: DEFAULTS.kgPerMtr, cutIn: {} };
+    var s = { startDate: DEFAULTS.startDate, kgPerMtr: DEFAULTS.kgPerMtr, cutIn: {} };
     Object.keys(DEFAULTS.cutIn).forEach(function (k) { s.cutIn[k] = DEFAULTS.cutIn[k]; });
     if (doc) {
       if (+doc.kgPerMtr > 0) s.kgPerMtr = +doc.kgPerMtr;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(doc.startDate || "")) s.startDate = doc.startDate;
       if (doc.cutIn) Object.keys(doc.cutIn).forEach(function (k) { if (+doc.cutIn[k] > 0) s.cutIn[k] = +doc.cutIn[k]; });
     }
     return s;
@@ -42,6 +43,7 @@
     var unlinked = {};
     (D.cuts || []).forEach(function (e) {
       if (e.stage !== "cutting" || PRODUCTS.indexOf(e.product) < 0) return;
+      if (ms(e.ts) < dayStart(S.startDate)) return;   // fresh start: older cutting (already reconciled) is ignored
       var L = lotFor(lots, e), bucket = L ? L.rows : unlinked;
       var k = e.product + "|" + e.shade + "|" + e.size;
       var R = bucket[k] || (bucket[k] = { product: e.product, shade: e.shade, size: e.size, qty: 0 });
@@ -85,7 +87,7 @@
   function resumeLot(L) { var h = (L.holds || []).map(function (x) { return x.to == null ? { from: x.from, to: Date.now() } : x; }); return updateLot(L.id, { status: "running", holds: h, balOk: null }); }  // held balance is being cut again
   function doneLot(L) { var h = (L.holds || []).map(function (x) { return x.to == null ? { from: x.from, to: Date.now() } : x; }); return updateLot(L.id, { status: "done", doneAt: Date.now(), holds: h }); }
   function reopenLot(L) { return updateLot(L.id, { status: "running", doneAt: null }); }
-  function saveSettings(s) { return F.db.collection("settings").doc("fabric").set({ kgPerMtr: +s.kgPerMtr, cutIn: s.cutIn }); }
+  function saveSettings(s) { return F.db.collection("settings").doc("fabric").set({ startDate: s.startDate, kgPerMtr: +s.kgPerMtr, cutIn: s.cutIn }); }
   function addDye(u, o) { return F.db.collection("dyesend").add({ lot: o.lot, shade: o.shade, kg: r2(o.kg), note: (o.note || "").slice(0, 120), uid: u.uid, name: F.getName(u), ts: firebase.firestore.FieldValue.serverTimestamp() }); }
   function deleteDye(id) { return F.db.collection("dyesend").doc(id).delete(); }
 
