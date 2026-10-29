@@ -51,13 +51,14 @@
 
   // per PO / sku summary: PO qty, inspected, cut, packed, today
   // totals per design / shade / size (no PO split: cut qty can move between POs)
+  var ACTIVE = ["Waffle Throw", "Waffle Bed Blanket"];
   function summary() {
     var insp = A.inspected(), t = F ? F.totals(ROWS) : {}, groups = {}, ORD = ["Waffle Throw", "Waffle Bed Blanket", "Duvet Cover", "Duvet Cover Set", "Sham Set"];
     var bySku = {};
     Object.keys(t).forEach(function (k) { var sku = k.split("|")[1], x = t[k], y = bySku[sku] || (bySku[sku] = { cut: 0, packed: 0, cutToday: 0, packedToday: 0 }); ["cut", "packed", "cutToday", "packedToday"].forEach(function (f) { y[f] += x[f]; }); });
     var inspSku = {}; Object.keys(insp).forEach(function (k) { var sku = k.split("|")[1]; inspSku[sku] = (inspSku[sku] || 0) + insp[k]; });
     A.state.catalog.forEach(function (c) {
-      if (!c.pos || !c.pos.length) return;
+      if (!c.pos || !c.pos.length || ACTIVE.indexOf(c.product) < 0) return;   // duvets and shams start later
       var P = groups[c.product] || (groups[c.product] = { po: c.product, lines: [], qty: 0, cut: 0, packed: 0, insp: 0, cutToday: 0, packedToday: 0 });
       var x = bySku[c.sku] || { cut: 0, packed: 0, cutToday: 0, packedToday: 0 }, q = 0; c.pos.forEach(function (p) { q += p.qty; });
       var L = { sku: c.sku, product: c.product, colour: c.colour, size: c.size, cls: c.cls, qty: q, insp: inspSku[c.sku] || 0, cut: x.cut, packed: x.packed, cutToday: x.cutToday, packedToday: x.packedToday };

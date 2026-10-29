@@ -100,9 +100,11 @@ for P in pos_c.values():
     P['products'] = sorted({l['product'] for l in P['lines']})
 ORD_P = ['Waffle Throw', 'Waffle Bed Blanket', 'Duvet Cover', 'Duvet Cover Set', 'Sham Set']
 ORD_S = ['TWIN', 'FULL/QUEEN', 'KING/CAL KING', 'THROW', 'STANDARD SHAM', 'KING SHAM']
+# designs offered in Production Update (duvets and shams start later; add them here when they do)
+PROD_ACTIVE = ['Waffle Throw', 'Waffle Bed Blanket']
 skus_c = []
 for c in st['catalog']:
-    if not c.get('pos'): continue
+    if not c.get('pos') or c['product'] not in PROD_ACTIVE: continue
     skus_c.append({'sku': c['sku'], 'product': c['product'], 'colour': c['colour'], 'size': c['size'], 'cls': c['cls'],
                    'qty': sum(p['qty'] for p in c['pos']), 'insp': sum(v for (po, sk), v in inspq.items() if sk == c['sku'])})
 skus_c.sort(key=lambda x: (ORD_P.index(x['product']) if x['product'] in ORD_P else 9, x['colour'], ORD_S.index(x['cls']) if x['cls'] in ORD_S else 9))
