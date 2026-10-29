@@ -4,8 +4,10 @@
 (function () {
   "use strict";
   var F = window.QMFire;
-  var DEFAULTS = { startDate: "2026-10-25", kgPerMtr: 0.66, cutIn: { "TWIN": 76, "FULL/QUEEN": 94, "KING/CAL KING": 110, "THROW": 52 } };
+  var DEFAULTS = { startDate: "2026-10-28", kgPerMtr: 0.66, cutIn: { "TWIN": 76, "FULL/QUEEN": 94, "KING/CAL KING": 110, "THROW": 52 } };
   var PRODUCTS = ["Waffle Throw", "Waffle Bed Blanket"];
+  // lots moved to history (shown in the history section from state.json, not in live numbers)
+  var ARCHIVED = ["OVgvfHpMA6ZhbX4lAKcp"];  // Undyed 220 kg, inward 24 Oct 2026
   var SIZE_ORDER = ["TWIN", "FULL/QUEEN", "KING/CAL KING", "THROW"];
   var SHADE_ORDER = ["Dove", "Espresso", "Mist", "Undyed", "Mineral", "Dried Sage", "White"];
 
@@ -36,7 +38,7 @@
   }
   function compute(D) {
     var S = settingsOf(D.settings), f = S.kgPerMtr;
-    var lots = (D.lots || []).map(function (L) {
+    var lots = (D.lots || []).filter(function (L) { return ARCHIVED.indexOf(L.id) < 0; }).map(function (L) {
       return { id: L.id, shade: L.shade, kg: +L.kg || 0, date: L.date, ts: L.ts, status: L.status || "running", balOk: L.balOk == null ? null : +L.balOk, balRej: L.balRej == null ? null : +L.balRej, holds: L.holds || [], doneAt: L.doneAt || null, note: L.note || "", rows: {}, sent: 0, sends: [] };
     });
     var byId = {}; lots.forEach(function (L) { byId[L.id] = L; });
@@ -61,11 +63,14 @@
       L.cutQty = 0; L.cutMtr = 0; L.cutKg = 0;
       L.rows.forEach(function (R) { L.cutQty += R.qty; L.cutMtr += R.mtr; L.cutKg += R.kg; });
       L.totalUsed = L.cutKg + (L.balOk || 0) + (L.balRej || 0);
-      L.diffKg = L.kg - L.totalUsed;          // inward - used (balance kg counted only when entered)
+      L.diffKg = L.totalUsed - L.kg;          // used - inward, as in the owner's Excel (balance kg counted only when entered)
       L.diffMtr = L.diffKg / f;
       L.inMtr = L.kg / f;
       L.onHand = L.kg - L.cutKg;              // fabric still on hand for a running lot
       L.dyeLoss = L.sent ? L.sent - L.kg : null;
+      L.sentMtr = L.sent / f;
+      L.valueLoss = L.sent ? L.sent - L.totalUsed : null;   // fabric sent vs used
+      L.lossPct = L.sent ? L.valueLoss / L.sent : null;
     });
     lots.sort(function (a, b) {
       var o = { running: 0, hold: 1, done: 2 };

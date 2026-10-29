@@ -1,5 +1,6 @@
 import json, datetime, sys
 from openpyxl import Workbook
+from openpyxl.utils import get_column_letter
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.formatting.rule import FormulaRule, CellIsRule, DataBarRule
 from openpyxl.workbook.defined_name import DefinedName
@@ -565,65 +566,87 @@ db[f'B{r0+9}'].font = font(8.5, False, MUTED)
 for ws in (cat, dy, cc): ws.sheet_state = 'hidden'
 
 # ======================= Fabric Reco =======================
-# live lots come from fabric.json (snapshot of the website's Fabric Reco page, taken in the daily run); history from state.json
+# live lots come from fabric.json (snapshot of the website Fabric Reco page, taken in the daily run); history from state.json
+# formulas as the owner asked: Average = cut size*2.54/100; Used mtr = SUMPRODUCT(qty, avg) merged per lot; Used kg = Used mtr*kg/m;
+# Bal OK / Bal REJ / Fabric sent kg typed by hand; Sent mtr = sent/kg/m; Total used = Used kg + Bal OK + Bal REJ;
+# Diff kg = Total used - Inward; Diff mtr = Diff kg/kg/m; Value loss = Fabric sent - Total used; Loss % = Value loss / Fabric sent
 navbar(fx, 'Fabric Reco')
 FJ = None
 try: FJ = json.load(open(B + 'fabric.json'))
 except Exception: FJ = None
 KPM = (FJ or {}).get('kgPerMtr', 0.66)
-title_band(fx, 2, 'Fabric reco', ('Snapshot of the website Fabric Reco page, ' + FJ['asof'][:10] + '. ' if FJ else 'No live snapshot yet. ') +
-           f'Used kg = cut qty x cut size x 0.0254 m x {KPM} kg/m (Cutting entries only). Diff = Inward - Used; Bal OK/REJ kg count as used once entered. Live page: sunilahamed.github.io/quince-matrix/fabric.html', 2, 17)
-FH = ['Design', 'Shade', 'Size', 'Cut qty', 'Cut size (inch)', 'Average (mtr/pc)', 'Used mtr', 'Used kg', 'Bal OK kg', 'Bal REJ kg', 'Fabric sent kg', 'Total used kg', 'Inward kg', 'Diff kg', 'Diff mtr', 'Lot']
-header(fx, 5, FH, 2)
 NAVY = '1F3864'
-for i in range(len(FH)): fx.cell(row=5, column=2 + i).fill = fill(NAVY)
-r = 6
-STL = {'running': 'Running', 'hold': 'On hold', 'done': 'Done'}
-lots = (FJ or {}).get('lots', [])
-if not lots:
-    fx.cell(row=r, column=2, value='No fabric inward entered yet on the website.').font = font(10, False, MUTED); r += 1
-first_rows = []
-for L in lots:
-    rows = L['rows'] or [{'product': '', 'shade': L['shade'], 'size': '', 'qty': 0, 'cutIn': None, 'avg': None, 'mtr': 0, 'kg': 0}]
-    a = r
-    for R in rows:
-        vals = [R['product'], R['shade'].upper(), (R['size'] or '').upper(), R['qty'], R['cutIn'], R['avg']]
-        for j, v in enumerate(vals): fx.cell(row=r, column=2 + j, value=v)
-        fx.cell(row=r, column=8, value=f'=E{r}*G{r}' if R['avg'] is not None else 0)
-        fx.cell(row=r, column=9, value=f'=H{r}*{KPM}')
-        r += 1
-    b = r - 1
-    lotv = [(10, L['balOk']), (11, L['balRej']), (12, L['sent'] or None), (13, f'=SUM(I{a}:I{b})+N(J{a})+N(K{a})'), (14, L['kg']),
-            (15, f'=N{a}-M{a}'), (16, f'=O{a}/{KPM}'), (17, f"{STL.get(L['status'], L['status'])} · inward {L['date']}" + (f" · {L['note']}" if L.get('note') else ''))]
-    for col, v in lotv:
-        if b > a: fx.merge_cells(start_row=a, start_column=col, end_row=b, end_column=col)
-        c = fx.cell(row=a, column=col, value=v); c.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True); c.font = font(10, True)
-    for col in (10, 11): fx.cell(row=a, column=col).fill = fill(YEL_BG)
-    for rr in range(a, b + 1):
-        for col in range(2, 18):
-            fx.cell(row=rr, column=col).border = Border(left=thin, right=thin, bottom=thin, top=Side(style='medium', color=NAVY) if rr == a else thin)
-    first_rows.append(a)
-if lots:
-    fx.cell(row=r, column=2, value='TOTAL')
+title_band(fx, 2, 'Fabric reco', ('Live lots: snapshot of the website Fabric Reco page, ' + FJ['asof'][:10] + '. ' if FJ else 'No live snapshot yet. ') +
+           'Yellow cells are typed by hand; the rest are formulas. Diff = Total used - Inward (minus = fabric left). Live page: sunilahamed.github.io/quince-matrix/fabric.html', 2, 20)
+fx['B4'] = 'Kg per metre'; fx['B4'].font = font(10, True); fx['C4'] = KPM; fx['C4'].fill = fill(YEL_BG); fx['C4'].number_format = '0.000'; fx['C4'].font = font(10, True, '0000FF')
+K = '$C$4'
+XH = ['Design', 'Shade', 'Size', 'Cut qty', 'Cut size (inch)', 'Average (mtr/pc)', 'Used mtr', 'Used kg', 'Bal OK kg', 'Bal REJ kg', 'Fabric sent kg', 'Fabric sent mtr',
+      'Total used kg', 'Inward kg', 'Diff kg', 'Diff mtr', 'Value loss kg', 'Loss %', 'Lot']
+SZL = {'TWIN': 'TWIN', 'FULL/QUEEN': 'FULL/QUEEN', 'KING/CAL KING': 'KING/CAL KING', 'THROW': 'THROW'}
+def C(n): return get_column_letter(n + 1)          # data column n (1-based) starts at sheet column B
+def reco_block(ws, r0, lots, title):
+    ws.merge_cells(start_row=r0, start_column=2, end_row=r0, end_column=20)
+    ws.cell(row=r0, column=2, value=title).font = font(12, True, NAVY)
+    header(ws, r0 + 1, XH, 2)
+    for i in range(len(XH)): ws.cell(row=r0 + 1, column=2 + i).fill = fill(NAVY)
+    r = r0 + 2; first = r
+    if not lots:
+        ws.cell(row=r, column=2, value='No lots yet.').font = font(10, False, MUTED); return r + 1
+    for L in lots:
+        rows = L['rows'] or [{'product': '', 'size': '', 'qty': 0, 'cutIn': None}]
+        a = r
+        for R in rows:
+            ws.cell(row=r, column=2, value=R['product']); ws.cell(row=r, column=3, value=L['shade'].upper())
+            ws.cell(row=r, column=4, value=str(R.get('size') or '').upper()); ws.cell(row=r, column=5, value=R['qty']); ws.cell(row=r, column=6, value=R.get('cutIn'))
+            ws.cell(row=r, column=7, value=f'=IF({C(5)}{r}="","",{C(5)}{r}*2.54/100)')
+            r += 1
+        b = r - 1
+        G = lambda n: f'{C(n)}{a}'
+        vals = {7: f'=SUMPRODUCT({C(4)}{a}:{C(4)}{b},{C(6)}{a}:{C(6)}{b})', 8: f'={G(7)}*{K}', 9: L.get('balOk'), 10: L.get('balRej'), 11: L.get('sent') or None,
+                12: f'=IF({G(11)}="","",{G(11)}/{K})', 13: f'={G(8)}+N({G(9)})+N({G(10)})', 14: L.get('kg'),
+                15: f'=IF({G(14)}="","",{G(13)}-{G(14)})', 16: f'=IF({G(15)}="","",{G(15)}/{K})', 17: f'=IF({G(11)}="","",{G(11)}-{G(13)})',
+                18: f'=IF(N({G(11)})=0,"",{G(17)}/{G(11)})', 19: L.get('label', '')}
+        for n, v in vals.items():
+            col = n + 1
+            if b > a: ws.merge_cells(start_row=a, start_column=col, end_row=b, end_column=col)
+            c = ws.cell(row=a, column=col, value=v); c.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True); c.font = font(10, True)
+        for n in (9, 10, 11): ws.cell(row=a, column=n + 1).fill = fill(YEL_BG); ws.cell(row=a, column=n + 1).font = font(10, True, '0000FF')
+        for rr in range(a, b + 1):
+            for col in range(2, 21):
+                ws.cell(row=rr, column=col).border = Border(left=thin, right=thin, bottom=thin, top=Side(style='medium', color=NAVY) if rr == a else thin)
     last = r - 1
-    for col in 'EHI': fx[f'{col}{r}'] = f'=SUM({col}6:{col}{last})'
-    for col in 'JKLMNOP': fx[f'{col}{r}'] = f'=SUM({col}6:{col}{last})'
-    for col in range(2, 18):
-        c = fx.cell(row=r, column=col); c.font = font(10, True); c.fill = fill('DDEBF7'); c.border = box
-    r += 1
-for row in range(6, r):
-    fx.cell(row=row, column=7).number_format = '0.0000'
-    for col in range(8, 17): fx.cell(row=row, column=col).number_format = '#,##0.00;[Red]-#,##0.00'
-fx.conditional_formatting.add(f'O6:P{max(r, 7)}', CellIsRule(operator='lessThan', formula=['0'], font=Font(name=F, bold=True, color=RED)))
+    ws.cell(row=r, column=2, value='TOTAL')
+    for n in (4, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17): ws.cell(row=r, column=n + 1, value=f'=SUM({C(n)}{first}:{C(n)}{last})')
+    ws.cell(row=r, column=19, value=f'=IF({C(11)}{r}=0,"",{C(17)}{r}/{C(11)}{r})')
+    for col in range(2, 21):
+        c = ws.cell(row=r, column=col); c.font = font(10, True); c.fill = fill('DDEBF7'); c.border = box
+    for rr in range(first, r + 1):
+        ws.cell(row=rr, column=7).number_format = '0.0000'
+        for col in range(8, 19): ws.cell(row=rr, column=col).number_format = '#,##0.00;[Red]-#,##0.00'
+        ws.cell(row=rr, column=19).number_format = '0.0%'
+    return r + 1
+
+STL = {'running': 'Running', 'hold': 'On hold', 'done': 'Done'}
+live = [{'shade': L['shade'], 'rows': [{'product': R['product'], 'size': R['size'], 'qty': R['qty'], 'cutIn': R['cutIn']} for R in L['rows']],
+         'balOk': L['balOk'], 'balRej': L['balRej'], 'sent': L['sent'], 'kg': L['kg'],
+         'label': f"{STL.get(L['status'], L['status'])} · inward {L['date']}" + (f" · {L['note']}" if L.get('note') else '')} for L in (FJ or {}).get('lots', [])]
+r = reco_block(fx, 6, live, 'LIVE LOTS')
 un = (FJ or {}).get('unlinked', [])
 if un:
     r += 1
-    fx.cell(row=r, column=2, value='Cutting with no running inward for that shade (not in any lot)').font = font(10, True, RED); r += 1
+    fx.cell(row=r, column=2, value='Cutting with no inward yet (owner adds the inward on the website)').font = font(10, True, RED); r += 1
     for R in un:
-        for j, v in enumerate([R['product'], R['shade'].upper(), R['size'].upper(), R['qty']]): fx.cell(row=r, column=2 + j, value=v)
-        fx.cell(row=r, column=9, value=R['kg']).number_format = '#,##0.00'; r += 1
-
-# history (owner's sheet, before live fabric reco)
+        for j, v in enumerate([R['product'], R['shade'].upper(), R['size'].upper(), R['qty'], R.get('cutIn')]): fx.cell(row=r, column=2 + j, value=v)
+        fx.cell(row=r, column=7, value=f'=IF(F{r}="","",F{r}*2.54/100)').number_format = '0.0000'
+        fx.cell(row=r, column=8, value=f'=IF(G{r}="","",E{r}*G{r})').number_format = '#,##0.00'
+        fx.cell(row=r, column=9, value=f'=IF(H{r}="","",H{r}*{K})').number_format = '#,##0.00'
+        r += 1
+H2 = st.get('fabric_history2')
+if H2:
+    r += 2
+    lots2 = [{'shade': L['colour'], 'rows': L['rows'], 'balOk': L.get('balOk'), 'balRej': L.get('balRej'), 'sent': L.get('sentKg'), 'kg': L['inKg'], 'label': f"{L['status']} · inward {L['date']}"} for L in H2['lots']]
+    r = reco_block(fx, r, lots2, 'HISTORY · ' + H2['title'].upper())
+    fx.cell(row=r, column=2, value=H2['note']).font = font(9, False, MUTED); r += 1
 H = st.get('fabric_history')
 if H:
     r += 2
@@ -648,13 +671,12 @@ if H:
         for rr in range(a, r):
             for col in range(2, 18): fx.cell(row=rr, column=col).border = box
     fx.cell(row=r, column=2, value='TOTAL')
-    for col in 'DEIL': pass
     for col in ['D', 'E', 'I', 'L', 'M', 'N', 'O', 'P', 'Q']: fx[f'{col}{r}'] = f'=SUM({col}{h0}:{col}{r - 1})'
     for col in range(2, 18):
         c = fx.cell(row=r, column=col); c.font = font(10, True); c.fill = fill('DDEBF7'); c.border = box
         if col >= 8: c.number_format = '#,##0;[Red]-#,##0'
     for rr in range(h0, r): fx.cell(row=rr, column=7).number_format = '0.0000'
-widths(fx, {'A': 2, 'B': 20, 'C': 12, 'D': 13, 'E': 9, 'F': 10, 'G': 11, 'H': 11, 'I': 11, 'J': 10, 'K': 10, 'L': 11, 'M': 12, 'N': 11, 'O': 11, 'P': 11, 'Q': 26})
+widths(fx, {'A': 2, 'B': 20, 'C': 12, 'D': 14, 'E': 9, 'F': 10, 'G': 11, 'H': 11, 'I': 11, 'J': 10, 'K': 10, 'L': 11, 'M': 11, 'N': 12, 'O': 11, 'P': 11, 'Q': 11, 'R': 12, 'S': 9, 'T': 26})
 fx.freeze_panes = 'B6'
 
 tabc = {'Dashboard': INK, 'Shop': PINE, 'PO Ledger': PINE, 'B2B Dispatch': PINE, 'Fabric Reco': '1F3864', 'Add Inspection': YEL, 'Add Orders': YEL}

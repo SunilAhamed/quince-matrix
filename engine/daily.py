@@ -98,7 +98,15 @@ for P in pos_c.values():
     P['b2b'] = P['po'] in B2B
     P['ship'] = ship.get(str(P['po']), '')
     P['products'] = sorted({l['product'] for l in P['lines']})
-json.dump({'updated': st['updated'], 'fabric_history': st.get('fabric_history'), 'pos': sorted(pos_c.values(), key=lambda P: -P['po'])}, open(B + 'site/catalog.json', 'w'), separators=(',', ':'))
+ORD_P = ['Waffle Throw', 'Waffle Bed Blanket', 'Duvet Cover', 'Duvet Cover Set', 'Sham Set']
+ORD_S = ['TWIN', 'FULL/QUEEN', 'KING/CAL KING', 'THROW', 'STANDARD SHAM', 'KING SHAM']
+skus_c = []
+for c in st['catalog']:
+    if not c.get('pos'): continue
+    skus_c.append({'sku': c['sku'], 'product': c['product'], 'colour': c['colour'], 'size': c['size'], 'cls': c['cls'],
+                   'qty': sum(p['qty'] for p in c['pos']), 'insp': sum(v for (po, sk), v in inspq.items() if sk == c['sku'])})
+skus_c.sort(key=lambda x: (ORD_P.index(x['product']) if x['product'] in ORD_P else 9, x['colour'], ORD_S.index(x['cls']) if x['cls'] in ORD_S else 9))
+json.dump({'updated': st['updated'], 'fabric_history': st.get('fabric_history'), 'fabric_history2': st.get('fabric_history2'), 'skus': skus_c, 'pos': sorted(pos_c.values(), key=lambda P: -P['po'])}, open(B + 'site/catalog.json', 'w'), separators=(',', ':'))
 os.remove(B + 'out/public_state.json')
 
 # ---------- Excel shop ----------

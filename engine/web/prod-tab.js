@@ -50,20 +50,22 @@
   }
 
   // per PO / sku summary: PO qty, inspected, cut, packed, today
+  // totals per design / shade / size (no PO split: cut qty can move between POs)
   function summary() {
-    var insp = A.inspected(), t = F ? F.totals(ROWS) : {}, pos = {};
+    var insp = A.inspected(), t = F ? F.totals(ROWS) : {}, groups = {}, ORD = ["Waffle Throw", "Waffle Bed Blanket", "Duvet Cover", "Duvet Cover Set", "Sham Set"];
+    var bySku = {};
+    Object.keys(t).forEach(function (k) { var sku = k.split("|")[1], x = t[k], y = bySku[sku] || (bySku[sku] = { cut: 0, packed: 0, cutToday: 0, packedToday: 0 }); ["cut", "packed", "cutToday", "packedToday"].forEach(function (f) { y[f] += x[f]; }); });
+    var inspSku = {}; Object.keys(insp).forEach(function (k) { var sku = k.split("|")[1]; inspSku[sku] = (inspSku[sku] || 0) + insp[k]; });
     A.state.catalog.forEach(function (c) {
-      (c.pos || []).forEach(function (p) {
-        var P = pos[p.po] || (pos[p.po] = { po: p.po, lines: [], qty: 0, cut: 0, packed: 0, insp: 0, cutToday: 0, packedToday: 0 });
-        var k = p.po + "|" + c.sku, x = t[k] || { cut: 0, packed: 0, cutToday: 0, packedToday: 0 };
-        var L = { sku: c.sku, product: c.product, colour: c.colour, size: c.size, cls: c.cls, qty: p.qty, insp: insp[k] || 0, cut: x.cut, packed: x.packed, cutToday: x.cutToday, packedToday: x.packedToday };
-        P.lines.push(L);
-        ["qty", "cut", "packed", "insp", "cutToday", "packedToday"].forEach(function (f) { P[f] += L[f]; });
-      });
+      if (!c.pos || !c.pos.length) return;
+      var P = groups[c.product] || (groups[c.product] = { po: c.product, lines: [], qty: 0, cut: 0, packed: 0, insp: 0, cutToday: 0, packedToday: 0 });
+      var x = bySku[c.sku] || { cut: 0, packed: 0, cutToday: 0, packedToday: 0 }, q = 0; c.pos.forEach(function (p) { q += p.qty; });
+      var L = { sku: c.sku, product: c.product, colour: c.colour, size: c.size, cls: c.cls, qty: q, insp: inspSku[c.sku] || 0, cut: x.cut, packed: x.packed, cutToday: x.cutToday, packedToday: x.packedToday };
+      P.lines.push(L);
+      ["qty", "cut", "packed", "insp", "cutToday", "packedToday"].forEach(function (f) { P[f] += L[f]; });
     });
-    var b2b = (A.state.b2b && A.state.b2b.pos) || [];
-    return Object.keys(pos).map(function (k) { var P = pos[k]; P.b2b = b2b.indexOf(P.po) > -1; P.lines.sort(function (a, b) { return (b.cutToday - a.cutToday) || (a.colour < b.colour ? -1 : a.colour > b.colour ? 1 : 0) || (a.sku < b.sku ? -1 : 1); }); return P; })
-      .sort(function (a, b) { return (b.cutToday + b.packedToday - a.cutToday - a.packedToday) || (b.po - a.po); });
+    return Object.keys(groups).map(function (k) { var P = groups[k]; P.lines.sort(function (a, b) { return ((b.cutToday + b.packedToday) > 0) - ((a.cutToday + a.packedToday) > 0) || (a.colour < b.colour ? -1 : a.colour > b.colour ? 1 : 0) || (a.sku < b.sku ? -1 : 1); }); return P; })
+      .sort(function (a, b) { return ORD.indexOf(a.po) - ORD.indexOf(b.po); });
   }
 
   function view() {
@@ -74,15 +76,15 @@
       '<div class="pu-kpi"><span>Packed today</span><b>' + fmt(tot.packedToday) + '</b><small>pcs</small></div>' +
       '<div class="pu-kpi"><span>Total cut</span><b>' + fmt(tot.cut) + '</b><small>of ' + fmt(tot.qty) + ' PO qty</small></div>' +
       '<div class="pu-kpi"><span>Total packed</span><b>' + fmt(tot.packed) + '</b><small>' + fmt(tot.insp) + ' inspected</small></div></div>';
-    h += '<div class="pu-bar"><select id="pu-po" aria-label="Filter by PO"><option>All</option>' + S.map(function (P) { return '<option' + (String(P.po) === ui.po ? " selected" : "") + '>' + P.po + '</option>'; }).join("") + '</select>' +
+    h += '<div class="pu-bar"><select id="pu-po" aria-label="Filter by design"><option>All</option>' + S.map(function (P) { return '<option' + (String(P.po) === ui.po ? " selected" : "") + '>' + P.po + '</option>'; }).join("") + '</select>' +
       '<button class="btn" id="pu-xl" type="button">Download Excel summary</button>' +
       (USER ? '<span class="pu-note" style="margin:0">Signed in as ' + esc(F.getName(USER)) + '</span>' : (F && F.ready ? '<button class="btn" id="pu-in" type="button">Sign in to see who entered</button>' : '')) + '</div>';
     if (ERR) h += '<div class="pu-empty">Production data could not load: ' + esc(ERR) + '</div>';
     else if (!LOADED) h += '<div class="pu-empty">Loading production…</div>';
     S.filter(function (P) { return ui.po === "All" || String(P.po) === ui.po; }).forEach(function (P) {
-      h += '<section class="pu-po"><h4>PO ' + P.po + (P.b2b ? ' <span class="tag yellow">B2B</span>' : '') + '<span class="t">PO qty ' + fmt(P.qty) + ' · Cut ' + fmt(P.cut) + ' · Packed ' + fmt(P.packed) + ' · Inspected ' + fmt(P.insp) + '</span>' +
+      h += '<section class="pu-po"><h4>' + esc(P.po) + '<span class="t">Open PO qty ' + fmt(P.qty) + ' · Cut ' + fmt(P.cut) + ' · Packed ' + fmt(P.packed) + ' · Inspected ' + fmt(P.insp) + '</span>' +
         (P.cutToday || P.packedToday ? '<span class="pu-new">Today +' + fmt(P.cutToday) + ' cut, +' + fmt(P.packedToday) + ' packed</span>' : '') + '</h4>' +
-        '<div class="pu-tw"><table class="pu-t"><thead><tr><th>Design</th><th>Shade</th><th>Size</th><th class="r">PO qty</th><th class="r">Cut</th><th class="r">Packed</th><th class="r">Inspected</th><th class="r">To cut</th><th class="r">To pack</th></tr></thead><tbody>' +
+        '<div class="pu-tw"><table class="pu-t"><thead><tr><th>Design</th><th>Shade</th><th>Size</th><th class="r">Open PO qty</th><th class="r">Cut</th><th class="r">Packed</th><th class="r">Inspected</th><th class="r">To cut</th><th class="r">To pack</th></tr></thead><tbody>' +
         P.lines.map(function (L) {
           var pct = L.qty ? Math.min(100, Math.round(L.cut / L.qty * 100)) : 0, tc = L.qty - L.cut, tp = L.qty - L.packed;
           return '<tr class="' + (L.cutToday || L.packedToday ? "today" : "") + '"><td>' + esc(L.product) + '</td><td><span class="pu-sw" style="background:' + (SW[L.colour] || "#999") + '"></span>' + esc(L.colour) + '</td><td>' + esc(SL[L.cls] || L.size) + '</td><td class="r">' + fmt(L.qty) + '</td>' +
@@ -101,10 +103,10 @@
     var rows = ROWS.filter(function (r) { return ui.log === "all" || dayOf(r) === t; });
     var h = '<div class="pu-bar" style="margin-top:18px"><h3 style="margin:0;font-size:16px">Production log</h3><select id="pu-log" aria-label="Which entries"><option value="today"' + (ui.log === "today" ? " selected" : "") + '>Today</option><option value="all"' + (ui.log === "all" ? " selected" : "") + '>All dates</option></select></div>';
     if (!rows.length) return h + '<div class="pu-empty">No entries ' + (ui.log === "today" ? "today yet" : "yet") + '.</div>';
-    return h + '<div class="pu-po"><div class="pu-tw"><table class="pu-t"><thead><tr><th>Date</th><th>Time</th><th>PO</th><th>Stage</th><th>Design</th><th>Shade</th><th>Size</th><th class="r">Qty</th><th>Entered by</th><th></th></tr></thead><tbody>' +
+    return h + '<div class="pu-po"><div class="pu-tw"><table class="pu-t"><thead><tr><th>Date</th><th>Time</th><th>Stage</th><th>Design</th><th>Shade</th><th>Size</th><th class="r">Qty</th><th>Entered by</th><th></th></tr></thead><tbody>' +
       rows.slice(0, 500).map(function (r) {
         var d = F.entryDate(r);
-        return '<tr><td>' + (d ? d.toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" }) : esc(r.day)) + '</td><td>' + (d ? d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" }) : "") + '</td><td>' + r.po + '</td><td>' + (r.stage === "cutting" ? "Cutting" : "Packing") + '</td><td>' + esc(r.product) + '</td><td><span class="pu-sw" style="background:' + (SW[r.shade] || "#999") + '"></span>' + esc(r.shade) + '</td><td>' + esc(SL[r.size] || r.size) + '</td><td class="r"><b>' + fmt(r.qty) + '</b></td><td>' + esc(r.name) + '</td><td>' +
+        return '<tr><td>' + (d ? d.toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" }) : esc(r.day)) + '</td><td>' + (d ? d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" }) : "") + '</td><td>' + (r.stage === "cutting" ? "Cutting" : "Packing") + '</td><td>' + esc(r.product) + '</td><td><span class="pu-sw" style="background:' + (SW[r.shade] || "#999") + '"></span>' + esc(r.shade) + '</td><td>' + esc(SL[r.size] || r.size) + '</td><td class="r"><b>' + fmt(r.qty) + '</b></td><td>' + esc(r.name) + '</td><td>' +
           (F.canDelete(USER, r) ? '<button class="pu-mini" type="button" data-pudel="' + r.id + '">Delete</button>' : '') + '</td></tr>';
       }).join("") + '</tbody></table></div></div>' + (owner ? '<p class="pu-note">As owner you can delete any entry here; to change a quantity use the Production Update page.</p>' : '');
   }
@@ -137,13 +139,13 @@
       ws.getCell("A1").font = { bold: true, size: 15, color: { argb: "FF16201B" } };
       ws.mergeCells("A2:L2"); ws.getCell("A2").value = "As of " + new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) + " IST. Rows with cutting or packing today are listed first and highlighted.";
       ws.getCell("A2").font = { italic: true, color: { argb: "FF6B7871" } };
-      var head = ["PO", "Design", "Shade", "Size", "SKU", "PO qty", "Cut", "Packed", "Inspected", "Balance to cut", "Balance to pack", "Cut today", "Packed today"];
+      var head = ["Group", "Design", "Shade", "Size", "SKU", "PO qty", "Cut", "Packed", "Inspected", "Balance to cut", "Balance to pack", "Cut today", "Packed today"];
       ws.getRow(4).values = head;
       ws.getRow(4).eachCell(function (c) { c.font = { bold: true, color: { argb: "FFFFFFFF" } }; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF2E6B5A" } }; c.alignment = { vertical: "middle", horizontal: "center", wrapText: true }; });
       ws.getRow(4).height = 30;
       var lines = [];
       S.forEach(function (P) { P.lines.forEach(function (L) { lines.push({ P: P, L: L }); }); });
-      lines.sort(function (a, b) { var ta = a.L.cutToday + a.L.packedToday, tb = b.L.cutToday + b.L.packedToday; return (tb > 0) - (ta > 0) || (b.L.cutToday - a.L.cutToday) || (a.P.po - b.P.po) || (a.L.sku < b.L.sku ? -1 : 1); });
+      lines.sort(function (a, b) { var ta = a.L.cutToday + a.L.packedToday, tb = b.L.cutToday + b.L.packedToday; return (tb > 0) - (ta > 0) || (b.L.cutToday - a.L.cutToday) || (a.P.po < b.P.po ? -1 : a.P.po > b.P.po ? 1 : 0) || (a.L.sku < b.L.sku ? -1 : 1); });
       var r = 5;
       lines.forEach(function (o) {
         var L = o.L, row = ws.getRow(r);
@@ -162,12 +164,12 @@
       ws.autoFilter = { from: "A4", to: "M" + Math.max(last, 4) };
 
       var lg = wb.addWorksheet("Production log", { views: [{ state: "frozen", ySplit: 1 }] });
-      lg.getRow(1).values = ["Date", "Time", "PO", "Stage", "Design", "Shade", "Size", "SKU", "Qty", "Entered by"];
+      lg.getRow(1).values = ["Date", "Time", "PO (old entries)", "Stage", "Design", "Shade", "Size", "SKU", "Qty", "Entered by"];
       lg.getRow(1).eachCell(function (c) { c.font = { bold: true, color: { argb: "FFFFFFFF" } }; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF2E6B5A" } }; });
       var showNames = !!USER;
       ROWS.slice().sort(function (a, b) { var A1 = dayOf(a) === t, B1 = dayOf(b) === t; return (B1 - A1) || ((b.ts && b.ts.toMillis ? b.ts.toMillis() : 0) - (a.ts && a.ts.toMillis ? a.ts.toMillis() : 0)); }).forEach(function (e, i) {
         var d = F.entryDate(e), row = lg.getRow(i + 2);
-        row.values = [dayOf(e), d ? d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" }) : "", e.po, e.stage === "cutting" ? "Cutting" : "Packing", e.product, e.shade, SL[e.size] || e.size, e.sku, e.qty, showNames ? e.name : "(sign in to see)"];
+        row.values = [dayOf(e), d ? d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" }) : "", e.po || "", e.stage === "cutting" ? "Cutting" : "Packing", e.product, e.shade, SL[e.size] || e.size, e.sku, e.qty, showNames ? e.name : "(sign in to see)"];
         if (dayOf(e) === t) row.eachCell({ includeEmpty: true }, function (c, n) { if (n <= 10) c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFF2C2" } }; });
       });
       [12, 9, 9, 10, 20, 13, 14, 12, 8, 20].forEach(function (w, i) { lg.getColumn(i + 1).width = w; });
