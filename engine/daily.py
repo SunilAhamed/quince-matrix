@@ -145,8 +145,8 @@ if new:
         return '50X70' if '50' in t else 'TWIN' if 'TWIN' in t else 'FULL/QUEEN' if 'QUEEN' in t else 'KING/CAL KING' if 'KING' in t else t
     def conv(x, l):
         awb = l[4]
-        return [str(x['Variant']).split('/')[0].strip().upper(), int(l[1]) if l[1].isdigit() else l[1], size(x['Variant']), l[3],
-                x.get('Customer') or '', int(awb) if awb.isdigit() else awb]
+        return [str(x['Variant']).split('/')[0].strip().upper(), str(l[1]), size(x['Variant']), l[3],
+                x.get('Customer') or '', str(awb)]   # order no. and AWB kept as text, so Excel never shows 5.3E+07
     ca = sorted([conv(x, l) for x, l in new if l[5] == 'CA'], key=lambda v: (str(v[1]), str(v[5])))
     us = sorted([conv(x, l) for x, l in new if l[5] != 'CA'], key=lambda v: (str(v[1]), str(v[5])))
     r = 3; n = 1
@@ -161,6 +161,28 @@ if new:
     ws.merge_cells('A1:I1')
     bold = copy.copy(tpl.cell(2, 1).font)
     ws.cell(r, 4, 'TOTAL').font = bold; ws.cell(r, 5, f'=SUM(E4:E{r-1})').font = bold
+    # ---- print-ready layout: readable 14pt text, wrap, row height 70, columns sized so nothing spills ----
+    from openpyxl.styles import Alignment, Font
+    from openpyxl.worksheet.properties import PageSetupProperties
+    widths = {'A': 7, 'B': 13, 'C': 14, 'D': 20, 'E': 6, 'F': 24, 'G': 18, 'H': 13, 'I': 14}
+    for k, w in widths.items(): ws.column_dimensions[k].width = w
+    for k in 'JKLM': ws.column_dimensions[k].width = 2
+    wrap = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    for rr in range(1, r + 1):
+        for c in range(1, 10):
+            cell = ws.cell(rr, c)
+            cell.alignment = wrap
+            if rr >= 3:
+                f = copy.copy(cell.font); f.size = 14 if rr > 2 else f.size; cell.font = f
+            if rr >= 3 and c in (3, 7): cell.number_format = '@'
+        ws.row_dimensions[rr].height = 40 if rr == 1 else 45 if rr == 2 else 70
+    ws.print_title_rows = '1:2'
+    ws.print_area = f'A1:I{r}'
+    ws.page_setup.orientation = 'portrait'; ws.page_setup.paperSize = ws.PAPERSIZE_A4
+    ws.sheet_properties.pageSetUpPr = PageSetupProperties(fitToPage=True)
+    ws.page_setup.fitToWidth = 1; ws.page_setup.fitToHeight = 0
+    pm = ws.page_margins; pm.left = pm.right = pm.top = pm.bottom = pm.header = pm.footer = 0
+    ws.print_options.horizontalCentered = True
     for w in wb.worksheets: w.sheet_view.tabSelected = (w.title == TAB)
     wb.active = wb.sheetnames.index(TAB)
     odr_out = B + f'out/LIVE_ODR_QTY - {TAB}.xlsx'
