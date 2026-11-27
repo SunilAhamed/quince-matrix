@@ -99,7 +99,7 @@ button{font:inherit;color:inherit}
 .pv{display:none}.show-pv .pv{display:block}.show-pv .shopview{display:none}
 .crumbs{margin:18px 0 10px;font-size:14px}.crumbs a{text-decoration:none;color:var(--ink2)}.crumbs a:hover{color:var(--ink)}
 .pgrid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:28px;align-items:start}
-.stage{position:relative;border-radius:24px;overflow:hidden;min-height:420px;display:flex;align-items:flex-end;justify-content:center;padding:30px 24px 0;
+.stage{position:relative;border-radius:24px;overflow:hidden;min-height:420px;aspect-ratio:4/3;display:flex;align-items:flex-end;justify-content:center;padding:30px 24px 0;
   background:linear-gradient(180deg,#efe7dc 0,#e7dccd 64%,#cfae86 64%,#b98a58 70%,#a7774a 100%);box-shadow:inset 0 -30px 60px -40px rgba(0,0,0,.4)}
 .stage::before{content:"";position:absolute;left:0;right:0;top:64%;height:2px;background:rgba(255,240,215,.6)}
 .stage img{position:relative;width:min(520px,94%);margin-bottom:9%;filter:drop-shadow(0 26px 18px rgba(50,28,8,.42))}
@@ -139,6 +139,24 @@ button{font:inherit;color:inherit}
 @media(max-width:860px){.pgrid{grid-template-columns:minmax(0,1fr)}.stage{min-height:300px}}
 @media(max-width:480px){.facts{grid-template-columns:repeat(2,minmax(0,1fr))}.steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
+.rooms{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:22px 0 4px}
+.room{position:relative;display:block;border-radius:22px;overflow:hidden;text-decoration:none;color:#fff;aspect-ratio:4/3;background:#ddd;box-shadow:0 24px 40px -30px rgba(50,30,10,.6)}
+.room img{width:100%;height:100%;object-fit:cover;transition:transform .6s cubic-bezier(.2,.8,.2,1),opacity .4s}
+.room:hover img{transform:scale(1.03)}
+.room .cap{position:absolute;left:0;right:0;bottom:0;padding:44px 18px 16px;background:linear-gradient(180deg,rgba(20,14,8,0),rgba(20,14,8,.62))}
+.room .cap h2{font-size:clamp(22px,2.6vw,28px)}
+.room .cap p{margin:2px 0 0;font-size:14px;opacity:.92}
+.room .dots{position:absolute;top:14px;left:14px;display:flex;gap:6px}
+.room .dots button{width:24px;height:24px;border-radius:50%;border:2px solid rgba(255,255,255,.9);cursor:pointer;padding:0;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+.room .dots button[aria-pressed=true]{outline:2px solid #fff;outline-offset:2px}
+@media(max-width:760px){.rooms{grid-template-columns:minmax(0,1fr)}.room .dots button{width:28px;height:28px}}
+.stage.scene{padding:0;align-items:stretch;background:#e9e2d8}
+.stage.scene img{width:100%;height:100%;object-fit:cover;margin:0;filter:none;position:absolute;inset:0}
+.views{display:flex;gap:8px;margin-top:10px}
+.views button{border:2px solid transparent;border-radius:12px;padding:0;background:#f4eee5;cursor:pointer;width:84px;height:64px;overflow:hidden}
+.views button img{width:100%;height:100%;object-fit:cover}
+.views button.fold img{object-fit:contain;padding:4px}
+.views button[aria-pressed=true]{border-color:var(--ink)}
 .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--ink2);margin:24px 0 6px}
 .legend span{display:inline-flex;align-items:center;gap:6px}.legend i{width:12px;height:12px;border-radius:4px}
 footer{color:var(--muted);font-size:13px;padding:8px 0 40px}
@@ -158,6 +176,7 @@ footer{color:var(--muted);font-size:13px;padding:8px 0 40px}
       </div>
       <div class="stack" id="stack" aria-hidden="true"></div>
     </section>
+    <div class="rooms" id="rooms"></div>
     <div class="rails">
       <section class="rail"><h3>Selling fast <small>last 7 order days</small></h3><div class="rlist" id="fast"></div></section>
       <section class="rail"><h3>Running low <small>needs the next inspection</small></h3><div class="rlist" id="low"></div></section>
@@ -188,11 +207,12 @@ footer{color:var(--muted);font-size:13px;padding:8px 0 40px}
 <script>
 {
 const SHADE={'Dove':'#bdb3a7','White':'#f3f2ef','Espresso':'#3a2826','Mist':'#a8adb1','Undyed':'#ece2c9','Mineral':'#4f5e70','Dried Sage':'#a19f8a'};
+const ROOM=(d,s)=>'img/room/'+(d==='Waffle Throw'?'chair':'bed')+'-'+s.toLowerCase().replace(/\s+/g,'-')+'.webp';
 const IMG=s=>'img/'+s.toLowerCase().replace(/\s+/g,'-')+'.webp';
 const SIZE={'TWIN':'Twin','FULL/QUEEN':'Queen','KING/CAL KING':'King','THROW':'Throw'};
 const SIZEL={'TWIN':'Twin','FULL/QUEEN':'Full/Queen','KING/CAL KING':'King/Cal King','THROW':'Throw'};
 const RACK={'Waffle Bed Blanket':['Waffle Bed Blankets','Twin · Full/Queen · King/Cal King'],'Waffle Throw':['Waffle Throws','One size throw']};
-let D=null, filter='all', PROD={}, pickedSize={};
+let D=null, filter='all', PROD={}, pickedSize={}, view={}, roomShade={};
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=n=>Number(n||0).toLocaleString('en-IN');
@@ -215,6 +235,7 @@ function renderShop(){
   const chip=z=>`<a class="ritem" href="#${slug(z.x)}"><img src="${IMG(z.x.shade)}" alt=""><b>${esc(z.x.shade)}</b><span>${SIZE[z.cls]||esc(z.size)} · ${z.x.design==='Waffle Throw'?'Throw':'Blanket'}</span><br><span>`;
   $('#fast').innerHTML=sizes.filter(z=>z.sold7>0).sort((a,b)=>b.sold7-a.sold7).slice(0,8).map(z=>chip(z)+`<b style="font-size:13px;display:inline">${fmt(z.sold7)} sold</b> · ${fmt(z.stock)} left</span></a>`).join('')||'<span class="note">No sales in the last 7 days.</span>';
   $('#low').innerHTML=sizes.filter(z=>z.status==='red').sort((a,b)=>a.stock-b.stock||b.sold7-a.sold7).slice(0,10).map(z=>chip(z)+`<b style="font-size:13px;display:inline;color:var(--red)">${fmt(z.stock)} left</b>${z.days_left!=null?' · ~'+z.days_left+' days':''}</span></a>`).join('')||'<span class="note">Nothing running low.</span>';
+  renderRooms();
   let h='';
   Object.keys(RACK).forEach(design=>{
     const all=it.filter(x=>x.design===design), list=all.filter(x=>filter==='all'||state(x)===filter);
@@ -234,16 +255,31 @@ function renderShop(){
   $('#racks').innerHTML=h;
 }
 
+function renderRooms(){
+  const R=[['Waffle Bed Blanket','The bedroom','Waffle bed blankets'],['Waffle Throw','The living room','Waffle throws']];
+  $('#rooms').innerHTML=R.map(([d,t,sub])=>{
+    const list=D.items.filter(i=>i.design===d), inn=list.filter(i=>i.stock>0).sort((a,b)=>b.stock-a.stock);
+    const cur=list.find(i=>i.shade===roomShade[d])||inn[0]||list[0];
+    return `<a class="room" href="#${slug(cur)}" data-d="${esc(d)}"><img src="${ROOM(d,cur.shade)}" alt="${esc(d+' in '+cur.shade)}">
+      <div class="dots">${list.map(i=>`<button type="button" data-shade="${esc(i.shade)}" aria-pressed="${i===cur}" aria-label="${esc(i.shade)}" title="${esc(i.shade)}: ${fmt(i.stock)} pcs" style="background:${SHADE[i.shade]}"></button>`).join('')}</div>
+      <div class="cap"><h2>${t}</h2><p>${sub} in ${esc(cur.shade)} · ${fmt(cur.stock)} pcs in stock →</p></div></a>`;}).join('');
+  document.querySelectorAll('.room .dots button').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();roomShade[b.closest('.room').dataset.d]=b.dataset.shade;renderRooms();}));
+}
+// preload room photos so shade switching is instant
+function preload(){D.items.forEach(i=>{const im=new Image();im.src=ROOM(i.design,i.shade);});}
+
 function renderProduct(key){
   const x=D.items.find(i=>slug(i)===key); if(!x){location.hash='';return;}
   const pick=pickedSize[key]||(x.sizes.slice().sort((a,b)=>b.sold7-a.sold7)[0]||x.sizes[0]).cls;
   const z=x.sizes.find(s=>s.cls===pick)||x.sizes[0]; const s=state(x); const isThrow=x.design==='Waffle Throw';
   const sib=D.items.filter(i=>i.design===x.design), other=D.items.find(i=>i.design!==x.design&&i.shade===x.shade);
   const pr=PROD[z.sku]||null, max=Math.max(1,...z.d14);
+  const v=view[x.design]||'room';
   const word={green:'In stock',yellow:'Limited stock',red:'Running low',empty:'Sold out'};
   $('#pv').innerHTML=`<div class="crumbs"><a href="#">← Back to shop</a> / ${RACK[x.design][0]} / ${esc(x.shade)}</div>
   <div class="pgrid">
-    <div class="stage ${isThrow?'throw':''}"><div class="chipline"><span class="pill ${z.status}">${word[z.status]}</span><span class="pill">${fmt(x.stock)} pcs all sizes</span></div><img src="${IMG(x.shade)}" alt="${esc(x.design+' in '+x.shade)}"></div>
+    <div><div class="stage ${v==='room'?'scene':''} ${isThrow?'throw':''}"><div class="chipline" style="z-index:1"><span class="pill ${z.status}">${word[z.status]}</span><span class="pill">${fmt(x.stock)} pcs all sizes</span></div><img src="${v==='room'?ROOM(x.design,x.shade):IMG(x.shade)}" alt="${esc(x.design+' in '+x.shade)}"></div>
+      <div class="views"><button type="button" data-v="room" aria-pressed="${v==='room'}" aria-label="In the room"><img src="${ROOM(x.design,x.shade)}" alt=""></button><button type="button" class="fold" data-v="fold" aria-pressed="${v==='fold'}" aria-label="Folded"><img src="${IMG(x.shade)}" alt=""></button></div></div>
     <div class="pinfo">
       <h1>${esc(x.design)} · ${esc(x.shade)}</h1>
       <p class="sub">${isThrow?'One size throw':'Three sizes'} · ${fmt(x.sold7)} sold in the last 7 order days${s==='out'?' · waiting for the next inspection':''}</p>
@@ -265,7 +301,8 @@ function renderProduct(key){
         <div class="steps"><div><span>PO qty</span><b>${fmt(z.po_qty)}</b></div><div><span>Cut (live)</span><b>${pr?fmt(pr.cut):'—'}</b></div><div><span>Packed (live)</span><b>${pr?fmt(pr.packed):'—'}</b></div><div><span>To inspect</span><b>${fmt(z.to_inspect)}</b></div></div></div>
     </div>
   </div>
-  ${other?`<div class="alsoin"><h2 style="font-size:22px;margin-bottom:10px">Also in ${esc(x.shade)}</h2><a class="ritem" style="width:180px;display:block" href="#${slug(other)}"><img src="${IMG(other.shade)}" alt=""><b>${esc(other.design)}</b><span>${fmt(other.stock)} pcs in stock</span></a></div>`:''}`;
+  ${other?`<div class="alsoin"><h2 style="font-size:22px;margin-bottom:10px">Also in ${esc(x.shade)}</h2><a class="ritem" style="width:180px;display:block" href="#${slug(other)}"><img src="${ROOM(other.design,other.shade)}" alt="" style="height:110px;object-fit:cover;border-radius:10px;filter:none"><b>${esc(other.design)}</b><span>${fmt(other.stock)} pcs in stock</span></a></div>`:''}`;
+  document.querySelectorAll('.views button').forEach(b=>b.addEventListener('click',()=>{view[x.design]=b.dataset.v;renderProduct(key);}));
   document.querySelectorAll('.sbtn').forEach(b=>b.addEventListener('click',()=>{pickedSize[key]=b.dataset.cls;renderProduct(key);}));
 }
 
@@ -277,7 +314,7 @@ function route(){
 }
 document.querySelectorAll('.chip').forEach(b=>b.addEventListener('click',()=>{filter=b.dataset.f;document.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed',c===b));if(D)renderShop();}));
 window.addEventListener('hashchange',route);
-fetch('shop.json?v='+Date.now()).then(r=>r.json()).then(d=>{D=d;renderShop();route();}).catch(()=>{$('#racks').innerHTML='<div class="err">Could not load the stock. Reload the page.</div>';});
+fetch('shop.json?v='+Date.now()).then(r=>r.json()).then(d=>{D=d;renderShop();route();setTimeout(preload,800);}).catch(()=>{$('#racks').innerHTML='<div class="err">Could not load the stock. Reload the page.</div>';});
 try{ if(window.QMFire&&QMFire.ready){ QMFire.watchEntries(rows=>{const t=QMFire.totals(rows), m={};Object.keys(t).forEach(k=>{const sku=k.split('|')[1];const o=m[sku]||(m[sku]={cut:0,packed:0});o.cut+=t[k].cut;o.packed+=t[k].packed;});PROD=m;const k=location.hash.slice(1);if(D&&k)renderProduct(k);},()=>{}); } }catch(e){}
 }
 </script>
