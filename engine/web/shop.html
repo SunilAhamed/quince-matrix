@@ -240,7 +240,7 @@ function renderShop(){
   renderRooms();
   let h='';
   Object.keys(RACK).forEach(design=>{
-    const all=it.filter(x=>x.design===design), list=all.filter(x=>filter==='all'||state(x)===filter);
+    const all=it.filter(x=>x.design===design), list=all.filter(x=>filter==='all'||(filter==='in'&&x.stock>0)||(filter==='low'&&x.sizes.some(z=>z.status==='red'))||(filter==='out'&&x.stock===0));
     h+=`<section class="rack"><h2>${RACK[design][0]}</h2><p class="rsub">${RACK[design][1]} · ${fmt(all.reduce((a,b)=>a+b.stock,0))} pcs in stock · ${fmt(all.reduce((a,b)=>a+b.sold7,0))} sold in the last 7 order days</p><div class="unit"><div class="shelf">`;
     if(!list.length) h+=`<div class="empty-shelf">Nothing on this rack for this filter.</div>`;
     list.forEach(x=>{

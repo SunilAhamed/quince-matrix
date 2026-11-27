@@ -204,8 +204,8 @@ footer{color:var(--muted);font-size:13px;padding:8px 0 40px}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="qm-fire.js?v=202611272032"></script>
-<script src="qm-nav.js?v=202611272032"></script>
+<script src="qm-fire.js?v=202611272041"></script>
+<script src="qm-nav.js?v=202611272041"></script>
 <script>
 {
 const SHADE={'Dove':'#bdb3a7','White':'#f3f2ef','Espresso':'#3a2826','Mist':'#a8adb1','Undyed':'#ece2c9','Mineral':'#4f5e70','Dried Sage':'#a19f8a'};
@@ -240,7 +240,7 @@ function renderShop(){
   renderRooms();
   let h='';
   Object.keys(RACK).forEach(design=>{
-    const all=it.filter(x=>x.design===design), list=all.filter(x=>filter==='all'||state(x)===filter);
+    const all=it.filter(x=>x.design===design), list=all.filter(x=>filter==='all'||(filter==='in'&&x.stock>0)||(filter==='low'&&x.sizes.some(z=>z.status==='red'))||(filter==='out'&&x.stock===0));
     h+=`<section class="rack"><h2>${RACK[design][0]}</h2><p class="rsub">${RACK[design][1]} · ${fmt(all.reduce((a,b)=>a+b.stock,0))} pcs in stock · ${fmt(all.reduce((a,b)=>a+b.sold7,0))} sold in the last 7 order days</p><div class="unit"><div class="shelf">`;
     if(!list.length) h+=`<div class="empty-shelf">Nothing on this rack for this filter.</div>`;
     list.forEach(x=>{
