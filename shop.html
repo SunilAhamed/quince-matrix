@@ -139,6 +139,7 @@ button{font:inherit;color:inherit}
 @media(max-width:860px){.pgrid{grid-template-columns:minmax(0,1fr)}.stage{min-height:300px}}
 @media(max-width:480px){.facts{grid-template-columns:repeat(2,minmax(0,1fr))}.steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
+.sect{font-size:clamp(24px,3vw,32px);margin:34px 0 0}
 .rooms{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:22px 0 4px}
 .room{position:relative;display:block;border-radius:22px;overflow:hidden;text-decoration:none;color:#fff;aspect-ratio:4/3;background:#ddd;box-shadow:0 24px 40px -30px rgba(50,30,10,.6)}
 .room img{width:100%;height:100%;object-fit:cover;transition:transform .6s cubic-bezier(.2,.8,.2,1),opacity .4s}
@@ -176,11 +177,6 @@ footer{color:var(--muted);font-size:13px;padding:8px 0 40px}
       </div>
       <div class="stack" id="stack" aria-hidden="true"></div>
     </section>
-    <div class="rooms" id="rooms"></div>
-    <div class="rails">
-      <section class="rail"><h3>Selling fast <small>last 7 order days</small></h3><div class="rlist" id="fast"></div></section>
-      <section class="rail"><h3>Running low <small>needs the next inspection</small></h3><div class="rlist" id="low"></div></section>
-    </div>
     <div class="bar" role="group" aria-label="Filter racks">
       <button class="chip" data-f="all" aria-pressed="true">All</button>
       <button class="chip" data-f="in" aria-pressed="false">In stock</button>
@@ -195,6 +191,12 @@ footer{color:var(--muted);font-size:13px;padding:8px 0 40px}
       <span><i style="background:var(--red)"></i><b class="lgR">20</b> pcs or fewer</span>
       <span><i style="background:var(--grey)"></i>Sold out</span>
     </div>
+    <h2 class="sect">Shop by room</h2>
+    <div class="rooms" id="rooms"></div>
+    <div class="rails">
+      <section class="rail"><h3>Selling fast <small>last 7 order days</small></h3><div class="rlist" id="fast"></div></section>
+      <section class="rail"><h3>Running low <small>needs the next inspection</small></h3><div class="rlist" id="low"></div></section>
+    </div>
   </div>
   <div class="pv" id="pv"></div>
   <footer>Stock = inspected − dispatched, updated with each daily run. No customer details are shown here.</footer>
@@ -202,8 +204,8 @@ footer{color:var(--muted);font-size:13px;padding:8px 0 40px}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="qm-fire.js?v=202611272013"></script>
-<script src="qm-nav.js?v=202611272013"></script>
+<script src="qm-fire.js?v=202611272032"></script>
+<script src="qm-nav.js?v=202611272032"></script>
 <script>
 {
 const SHADE={'Dove':'#bdb3a7','White':'#f3f2ef','Espresso':'#3a2826','Mist':'#a8adb1','Undyed':'#ece2c9','Mineral':'#4f5e70','Dried Sage':'#a19f8a'};
