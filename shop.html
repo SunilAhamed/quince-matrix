@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quince Matrix Shop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap">
+<style>
+/* VOICE: a calm home-textile store, warm and tidy, numbers stay honest
+   IDEA: a linen shop wall: wooden racks with folded waffle blankets, each one tagged with its stock
+   PICTURE: drawn folded blankets in every shade, standing on oak shelves; a stacked trio in the banner
+   COLOUR and TYPE: oat linen ground, oak shelves, ink text; stock colours green/amber/red; Jost + DM Sans
+   LAYOUT: header, banner (numbers left, stack right), filter chips, Bed Blanket rack, Throw rack, legend */
+:root{
+  --bg:#f5f0e8; --paper:#fbf8f3; --ink:#2b2622; --ink2:#5d554d; --muted:#8a8178; --line:#e3dacd;
+  --oak:#b9875a; --oak2:#8f6440; --oak3:#d7ae84;
+  --green:#2f8a5b; --amber:#c98a12; --red:#c4473a; --grey:#9a948c;
+  --gbg:#e3f1e8; --abg:#f8ecd2; --rbg:#f7e0dc; --xbg:#ece8e2;
+  color-scheme:light;
+}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 "DM Sans",system-ui,sans-serif;overflow-x:clip}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.35;z-index:-1;
+  background-image:repeating-linear-gradient(0deg,rgba(120,100,80,.05) 0 1px,transparent 1px 3px),repeating-linear-gradient(90deg,rgba(120,100,80,.04) 0 1px,transparent 1px 4px)}
+a{color:inherit}
+.wrap{max-width:1240px;margin:0 auto;padding:0 max(16px,4vw)}
+header.top{display:flex;align-items:center;gap:16px;padding:18px 0;flex-wrap:wrap}
+.brand{font-family:Jost,sans-serif;font-weight:600;font-size:22px;letter-spacing:.01em;display:flex;align-items:center;gap:10px;text-decoration:none}
+.brand i{width:34px;height:34px;border-radius:10px;background:var(--ink);color:var(--paper);display:grid;place-items:center;font-style:normal;font-size:18px}
+.brand small{font:500 13px "DM Sans";color:var(--muted)}
+nav.links{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+nav.links a{text-decoration:none;font-size:14px;padding:9px 14px;border-radius:999px;border:1px solid var(--line);background:var(--paper)}
+nav.links a:hover,nav.links a:focus-visible{border-color:var(--oak);outline:none}
+.preview{font-size:13px;color:var(--ink2);background:var(--abg);border:1px solid #ecd9ad;border-radius:999px;padding:4px 12px;display:inline-block}
+
+/* banner */
+.hero{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:24px;align-items:center;background:var(--paper);border:1px solid var(--line);border-radius:24px;padding:clamp(20px,3vw,40px);box-shadow:0 20px 60px -40px rgba(80,60,40,.5)}
+.hero h1{font-family:Jost,sans-serif;font-weight:500;font-size:clamp(32px,4.4vw,48px);line-height:1.05;margin:10px 0 8px;text-wrap:balance}
+.hero p.sub{color:var(--ink2);margin:0 0 20px;max-width:46ch}
+.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.kpi{background:var(--bg);border-radius:16px;padding:14px 16px}
+.kpi span{display:block;font-size:13px;color:var(--muted)}
+.kpi b{font:600 clamp(24px,3vw,32px)/1.1 Jost,sans-serif;font-variant-numeric:tabular-nums}
+.kpi em{display:block;font-style:normal;font-size:13px;color:var(--ink2)}
+.kpi.warn b{color:var(--red)}
+.stack svg{width:100%;max-width:230px;height:auto;display:block;margin:0 auto}
+
+/* filters */
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:30px 0 6px}
+.chip{font:500 14px "DM Sans";border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:9px 16px;min-height:40px;cursor:pointer;color:var(--ink)}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.chip:focus-visible{outline:2px solid var(--oak);outline-offset:2px}
+.bar .note{margin-left:auto;font-size:13px;color:var(--muted)}
+
+/* racks */
+.rack{margin:26px 0 10px}
+.rack h2{font-family:Jost,sans-serif;font-weight:500;font-size:clamp(24px,3vw,32px);margin:0 0 4px}
+.rack .rsub{color:var(--muted);font-size:14px;margin:0 0 14px}
+.shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));column-gap:0;row-gap:34px;
+  background:linear-gradient(#efe6d8,#e9decd);border-radius:18px;padding:18px 18px 22px;box-shadow:inset 0 2px 10px rgba(90,60,30,.12)}
+.card{position:relative;padding:8px 12px 0;display:flex;flex-direction:column;align-items:center;text-align:center;cursor:default}
+.card::after{content:"";position:absolute;left:-1px;right:-1px;bottom:-14px;height:16px;
+  background:linear-gradient(var(--oak3),var(--oak) 40%,var(--oak2));box-shadow:0 8px 12px -6px rgba(70,40,10,.45)}
+.card .pic{width:100%;max-width:230px;aspect-ratio:300/210;transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+.card:hover .pic{transform:translateY(-6px)}
+.card.sold .pic{filter:grayscale(.65) opacity(.55)}
+.tag{position:relative;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:10px 12px 12px;margin:6px 0 22px;width:100%;max-width:240px;box-shadow:0 6px 16px -10px rgba(60,40,20,.35)}
+.tag h3{font:600 17px/1.2 Jost,sans-serif;margin:0 0 2px;display:flex;align-items:center;justify-content:center;gap:8px}
+.tag h3 .dot{width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.15)}
+.tag .meta{font-size:12.5px;color:var(--muted);margin-bottom:8px}
+.sizes{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+.sz{border-radius:10px;padding:5px 8px;font-size:12.5px;line-height:1.2;min-width:62px}
+.sz b{display:block;font:600 16px Jost,sans-serif;font-variant-numeric:tabular-nums}
+.sz.green{background:var(--gbg);color:var(--green)}.sz.yellow{background:var(--abg);color:#8d5f05}
+.sz.red{background:var(--rbg);color:var(--red)}.sz.empty{background:var(--xbg);color:var(--grey)}
+.ribbon{position:absolute;top:14px;left:50%;transform:translateX(-50%);font:600 12px "DM Sans";letter-spacing:.02em;background:var(--ink);color:var(--paper);padding:4px 10px;border-radius:999px;white-space:nowrap}
+.ribbon.low{background:var(--red)}
+.empty-shelf{grid-column:1/-1;padding:30px;text-align:center;color:var(--muted)}
+
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--ink2);margin:28px 0 8px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:12px;height:12px;border-radius:4px;display:inline-block}
+footer{color:var(--muted);font-size:13px;padding:10px 0 40px}
+.err{background:var(--rbg);color:var(--red);padding:14px;border-radius:12px}
+
+@media(max-width:760px){.hero{grid-template-columns:minmax(0,1fr)}.stack{order:-1;max-width:360px;margin:0 auto}}
+@media(max-width:480px){.shelf{grid-template-columns:repeat(2,minmax(0,1fr));padding:12px 8px 0}.card{padding:4px 4px 0}.sz{min-width:0;padding:4px 6px}.tag{padding:8px 6px 10px}.tag h3{font-size:15px}.bar .note{margin-left:0}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="./"><i>Q</i><span>Quince Matrix<br><small>JDA Texworld · shop</small></span></a>
+    <span class="preview">Preview of the new shop design</span>
+    <nav class="links"><a href="./">Dashboard</a><a href="production.html">Production</a><a href="fabric.html">Fabric Reco</a></nav>
+  </header>
+
+  <section class="hero">
+    <div>
+      <h1 id="h1">Today's shop</h1>
+      <p class="sub" id="sub">Loading stock…</p>
+      <div class="kpis" id="kpis"></div>
+    </div>
+    <div class="stack" id="stack" aria-hidden="true"></div>
+  </section>
+
+  <div class="bar" role="group" aria-label="Filter shelves">
+    <button class="chip" data-f="all" aria-pressed="true">All</button>
+    <button class="chip" data-f="in">In stock</button>
+    <button class="chip" data-f="low">Running low</button>
+    <button class="chip" data-f="out">Sold out</button>
+    <span class="note" id="upd"></span>
+  </div>
+
+  <div id="racks"></div>
+
+  <div class="legend">
+    <span><i style="background:var(--green)"></i>More than <b id="lgY">100</b> pcs</span>
+    <span><i style="background:var(--amber)"></i><b id="lgR">21</b>–<b id="lgY2">100</b> pcs</span>
+    <span><i style="background:var(--red)"></i><b id="lgR2">20</b> pcs or fewer</span>
+    <span><i style="background:var(--grey)"></i>Sold out</span>
+  </div>
+  <footer>Stock = inspected − dispatched, updated with each daily run. No customer details are shown here.</footer>
+</div>
+
+<script>
+{
+const SHADE={ 'Dove':'#bdb3a7','White':'#f3f2ef','Espresso':'#3a2826','Mist':'#a8adb1','Undyed':'#ece2c9','Mineral':'#4f5e70','Dried Sage':'#a19f8a' };
+const SIZE={ 'TWIN':'Twin','FULL/QUEEN':'Queen','KING/CAL KING':'King','THROW':'Throw' };
+const RACK={ 'Waffle Bed Blanket':['Waffle Bed Blankets','Twin · Full/Queen · King/Cal King'], 'Waffle Throw':['Waffle Throws','50 × 70 in'] };
+let DATA=null, filter='all';
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=n=>Number(n||0).toLocaleString('en-IN');
+function hx(h){h=h.replace('#','');return [0,2,4].map(i=>parseInt(h.substr(i,2),16))}
+function mix(a,b,t){const A=hx(a),B=hx(b);return '#'+A.map((v,i)=>Math.round(v+(B[i]-v)*t).toString(16).padStart(2,'0')).join('')}
+function lum(h){const [r,g,b]=hx(h);return (0.299*r+0.587*g+0.114*b)/255}
+
+// one folded waffle blanket, drawn from the shade colour
+let uid=0;
+function blanket(base,opts){
+  opts=opts||{}; const id='b'+(uid++); const dark=lum(base)<.35;
+  const cell=mix(base,'#000000',dark?.32:.16), hi=mix(base,'#ffffff',dark?.18:.5), edge=mix(base,'#000000',dark?.22:.12), lo=mix(base,'#000000',dark?.4:.22);
+  const s=opts.small?.8:1, tx=opts.small?30:0, ty=opts.small?34:0;
+  const inner=`<defs>
+    <pattern id="${id}w" width="11" height="11" patternUnits="userSpaceOnUse">
+      <rect width="11" height="11" fill="${base}"/><rect x="1.6" y="1.6" width="7.8" height="7.8" rx="2.4" fill="${cell}" opacity=".55"/>
+      <path d="M1.6 2.2h7.8" stroke="${hi}" stroke-width="1" opacity=".55"/></pattern>
+    <linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".55" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".28"/></linearGradient>
+    <linearGradient id="${id}f" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".3"/><stop offset=".7" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".18"/></linearGradient>
+  </defs>
+  <ellipse cx="150" cy="198" rx="${120*s}" ry="9" fill="#5a3b1c" opacity=".18"/>
+  <g transform="translate(${tx} ${ty}) scale(${s})">
+    <path d="M28 108c0-26 14-44 40-44h166c26 0 42 18 42 44v52c0 20-14 32-34 32H62c-22 0-34-12-34-32z" fill="url(#${id}w)"/>
+    <path d="M28 108c0-26 14-44 40-44h166c26 0 42 18 42 44v52c0 20-14 32-34 32H62c-22 0-34-12-34-32z" fill="url(#${id}s)"/>
+    <path d="M30 150h244" stroke="${lo}" stroke-width="1.4" opacity=".35"/>
+    <path d="M30 128h244" stroke="${lo}" stroke-width="1" opacity=".22"/>
+    <path d="M58 66c58-18 128-24 182-16 18 3 26 12 22 28l-28 78c-5 13-17 14-26 3-34-46-90-72-150-93z" fill="url(#${id}w)"/>
+    <path d="M58 66c58-18 128-24 182-16 18 3 26 12 22 28l-28 78c-5 13-17 14-26 3-34-46-90-72-150-93z" fill="url(#${id}f)" stroke="${edge}" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M60 67c58-17 126-23 180-15" stroke="${hi}" stroke-width="2" fill="none" opacity=".7"/>
+  </g>`;
+  if(opts.inner) return inner;
+  return `<svg viewBox="0 0 300 210" class="pic" role="img" aria-label="${esc(opts.label||'')}">${inner}</svg>`;
+}
+
+function status(n){if(n<=0)return 'empty';if(n<=DATA.red)return 'red';if(n<=DATA.yellow)return 'yellow';return 'green'}
+function cardState(it){const st=it.sizes.map(z=>z.status);if(st.every(s=>s==='empty'))return 'out';if(st.some(s=>s==='red'||s==='empty'))return 'low';return 'in'}
+
+function render(){
+  const it=DATA.items;
+  const tot=it.reduce((a,b)=>a+b.stock,0);
+  const sizes=it.flatMap(x=>x.sizes);
+  const low=sizes.filter(z=>z.status==='red').length, out=sizes.filter(z=>z.status==='empty').length;
+  const d=new Date(DATA.last_day+'T00:00:00+05:30').toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+  $('#sub').textContent=`${fmt(DATA.last_day_pcs)} pieces went out on ${d} across ${fmt(DATA.last_day_orders)} orders. Here is what is on the racks now.`;
+  $('#kpis').innerHTML=`
+    <div class="kpi"><span>In stock</span><b>${fmt(tot)}</b><em>pcs on the racks</em></div>
+    <div class="kpi"><span>Last order day</span><b>${fmt(DATA.last_day_pcs)}</b><em>pcs · ${d}</em></div>
+    <div class="kpi warn"><span>Running low</span><b>${low}</b><em>sizes at ${DATA.red} pcs or fewer</em></div>
+    <div class="kpi"><span>Sold out</span><b>${out}</b><em>sizes with no stock</em></div>`;
+  ['#lgR','#lgR2'].forEach((s,i)=>$(s).textContent=i?DATA.red:DATA.red+1);['#lgY','#lgY2'].forEach(s=>$(s).textContent=DATA.yellow);
+  $('#upd').textContent='Updated '+new Date(DATA.updated).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'});
+  // banner stack: the three best-stocked bed blanket shades
+  const top=it.filter(x=>x.design==='Waffle Bed Blanket').slice().sort((a,b)=>b.stock-a.stock).slice(0,3);
+  $('#stack').innerHTML=`<svg viewBox="0 0 250 470">${top.map((x,i)=>`<g transform="translate(${4+(i%2)*6} ${306-i*92}) scale(.78)">${blanket(SHADE[x.shade]||'#ccc',{inner:true})}</g>`).join('')}</svg>`;
+  let h='';
+  Object.keys(RACK).forEach(design=>{
+    const list=it.filter(x=>x.design===design).filter(x=>filter==='all'||cardState(x)===filter);
+    const all=it.filter(x=>x.design===design);
+    h+=`<section class="rack"><h2>${RACK[design][0]}</h2><p class="rsub">${RACK[design][1]} · ${fmt(all.reduce((a,b)=>a+b.stock,0))} pcs in stock · ${fmt(all.reduce((a,b)=>a+b.sold7,0))} sold in the last 7 order days</p><div class="shelf">`;
+    if(!list.length) h+=`<div class="empty-shelf">Nothing on this rack for this filter.</div><div class="card" style="visibility:hidden;height:0"></div>`;
+    list.forEach(x=>{
+      const stt=cardState(x), c=SHADE[x.shade]||'#ccc';
+      h+=`<article class="card ${stt==='out'?'sold':''}">
+        ${stt==='out'?'<span class="ribbon">Sold out</span>':stt==='low'?'<span class="ribbon low">Running low</span>':''}
+        ${blanket(c,{small:design==='Waffle Throw',label:x.design+' in '+x.shade})}
+        <div class="tag"><h3><span class="dot" style="background:${c}"></span>${esc(x.shade)}</h3>
+          <div class="meta">${fmt(x.stock)} pcs · ${fmt(x.sold7)} sold in 7 days</div>
+          <div class="sizes">${x.sizes.map(z=>`<span class="sz ${z.status}" title="${esc(z.size)} · ${esc(z.sku)}${z.days_left?` · about ${z.days_left} order days left`:''}">${SIZE[z.cls]||esc(z.size)}<b>${z.stock>0?fmt(z.stock):'0'}</b></span>`).join('')}</div>
+        </div></article>`;
+    });
+    h+='</div></section>';
+  });
+  $('#racks').innerHTML=h;
+}
+document.querySelectorAll('.chip').forEach(b=>b.addEventListener('click',()=>{filter=b.dataset.f;document.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed',c===b));if(DATA)render();}));
+fetch('shop.json?v='+Date.now()).then(r=>r.json()).then(d=>{DATA=d;render();}).catch(()=>{$('#racks').innerHTML='<div class="err">Could not load the stock. Reload the page.</div>';});
+}
+</script>
+</body>
+</html>

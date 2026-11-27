@@ -76,7 +76,7 @@ tags = ''.join('<script src="%s%s-compat.js"></script>' % (FB, m) for m in ('app
 s = s.rstrip() + '\n' + tags + '\n'  # page has no </body>; the inline JS contains '</body>' text, so append at the end
 if not s.lstrip().lower().startswith('<!doctype'): s = '<!doctype html>\n<meta charset="utf-8">\n' + s
 open(B + 'site/index.html', 'w').write(s)
-for f in ('production.html', 'qm-fire.js', 'prod-tab.js', 'fabric.html', 'qm-fabric.js'):
+for f in ('production.html', 'qm-fire.js', 'prod-tab.js', 'fabric.html', 'qm-fabric.js', 'shop.html'):
     shutil.copy(B + 'web/' + f, B + 'site/' + f)
 # cache-busting: script URLs carry a build stamp so phones load the new code at once
 VER = datetime.datetime.now().strftime('%Y%m%d%H%M')
@@ -108,6 +108,7 @@ for c in st['catalog']:
     skus_c.append({'sku': c['sku'], 'product': c['product'], 'colour': c['colour'], 'size': c['size'], 'cls': c['cls'],
                    'qty': sum(p['qty'] for p in c['pos']), 'insp': sum(v for (po, sk), v in inspq.items() if sk == c['sku'])})
 skus_c.sort(key=lambda x: (ORD_P.index(x['product']) if x['product'] in ORD_P else 9, x['colour'], ORD_S.index(x['cls']) if x['cls'] in ORD_S else 9))
+subprocess.run([sys.executable, '-I', B + 'shopdata.py', B + 'state.json', B + 'site/shop.json'], check=False)  # shop preview stock
 json.dump({'updated': st['updated'], 'fabric_history': st.get('fabric_history'), 'fabric_history2': st.get('fabric_history2'), 'skus': skus_c, 'pos': sorted(pos_c.values(), key=lambda P: -P['po'])}, open(B + 'site/catalog.json', 'w'), separators=(',', ':'))
 os.remove(B + 'out/public_state.json')
 
