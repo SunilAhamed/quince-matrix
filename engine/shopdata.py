@@ -17,11 +17,13 @@ insp = collections.Counter(); sold = collections.Counter(); s7 = collections.Cou
 for l in st['insp']:
     if l['po'] not in b2b: insp[l['s']] += l['q']
 days = sorted({s[0] for s in st['sales']})
-d7 = set(days[-7:]); dl = days[-1] if days else ''
+d7 = set(days[-7:]); dl = days[-1] if days else ''; d14 = days[-14:]
+daily = collections.defaultdict(collections.Counter)
 for s in st['sales']:
     sold[s[2]] += s[3]
     if s[0] in d7: s7[s[2]] += s[3]
     if s[0] == dl: last[s[2]] += s[3]
+    if s[0] in d14: daily[s[2]][s[0]] += s[3]
 
 def status(n):
     return 'empty' if n <= 0 else 'red' if n <= red else 'yellow' if n <= yellow else 'green'
@@ -35,7 +37,8 @@ for c in st['catalog']:
     pace = s7[c['sku']] / max(len(d7), 1)
     it['sizes'].append({'sku': c['sku'], 'cls': c['cls'], 'size': c['size'], 'po_qty': sum(p['qty'] for p in c['pos']),
                         'inspected': insp[c['sku']], 'sold': sold[c['sku']], 'stock': stock, 'status': status(stock),
-                        'sold7': s7[c['sku']], 'sold_last': last[c['sku']],
+                        'sold7': s7[c['sku']], 'sold_last': last[c['sku']], 'd14': [daily[c['sku']][d] for d in d14],
+                        'to_inspect': max(sum(p['qty'] for p in c['pos']) - insp[c['sku']], 0), 'pos': [p['po'] for p in c['pos']],
                         'days_left': round(stock / pace, 1) if pace > 0 and stock > 0 else None})
 res = []
 for (d, sh), it in items.items():
@@ -44,5 +47,5 @@ for (d, sh), it in items.items():
     res.append(it)
 res.sort(key=lambda it: (DESIGNS.index(it['design']), SHADES.index(it['shade']) if it['shade'] in SHADES else 9))
 json.dump({'updated': st['updated'], 'last_day': dl, 'last_day_pcs': sum(last.values()), 'last_day_orders': len({s[1] for s in st['sales'] if s[0] == dl}),
-           'days7': sorted(d7), 'red': red, 'yellow': yellow, 'items': res}, open(out, 'w'), separators=(',', ':'))
+           'days7': sorted(d7), 'days14': d14, 'red': red, 'yellow': yellow, 'items': res}, open(out, 'w'), separators=(',', ':'))
 print('shop.json', len(res), 'cards')

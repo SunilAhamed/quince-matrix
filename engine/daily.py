@@ -72,17 +72,18 @@ s = s.replace('Customer names and addresses are not stored on this page.',
               "Order numbers, AWB numbers and customer details are not published on this page. Updated after each day's order confirmation.")
 # production (separate from stock): Firebase scripts on the public page + PO catalog for production.html
 FB = 'https://www.gstatic.com/firebasejs/10.12.2/firebase-'
-tags = ''.join('<script src="%s%s-compat.js"></script>' % (FB, m) for m in ('app', 'auth', 'firestore')) + '<script src="qm-fire.js"></script><script src="prod-tab.js"></script>'
+tags = ''.join('<script src="%s%s-compat.js"></script>' % (FB, m) for m in ('app', 'auth', 'firestore')) + '<script src="qm-fire.js"></script><script src="prod-tab.js"></script><script src="qm-nav.js"></script>'
 s = s.rstrip() + '\n' + tags + '\n'  # page has no </body>; the inline JS contains '</body>' text, so append at the end
 if not s.lstrip().lower().startswith('<!doctype'): s = '<!doctype html>\n<meta charset="utf-8">\n' + s
 open(B + 'site/index.html', 'w').write(s)
-for f in ('production.html', 'qm-fire.js', 'prod-tab.js', 'fabric.html', 'qm-fabric.js', 'shop.html'):
+for f in ('production.html', 'qm-fire.js', 'prod-tab.js', 'fabric.html', 'qm-fabric.js', 'shop.html', 'qm-nav.js'):
     shutil.copy(B + 'web/' + f, B + 'site/' + f)
+shutil.copytree(B + 'web/img', B + 'site/img', dirs_exist_ok=True)
 # cache-busting: script URLs carry a build stamp so phones load the new code at once
 VER = datetime.datetime.now().strftime('%Y%m%d%H%M')
-for f in ('index.html', 'production.html', 'fabric.html'):
+for f in ('index.html', 'production.html', 'fabric.html', 'shop.html'):
     t = open(B + 'site/' + f).read()
-    for js in ('qm-fire.js', 'qm-fabric.js', 'prod-tab.js'):
+    for js in ('qm-fire.js', 'qm-fabric.js', 'prod-tab.js', 'qm-nav.js'):
         t = t.replace('src="%s"' % js, 'src="%s?v=%s"' % (js, VER))
     open(B + 'site/' + f, 'w').write(t)
 inspq = collections.Counter()
